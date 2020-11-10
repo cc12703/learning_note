@@ -81,15 +81,50 @@ npm config get registry   //验证是否成功
 ## 描述文件
 
 ### 字段说明
-* name 模块名，要全部小写，无空格，可以用下划线和破折号
-* version 版本信息
-* main  模块引入后，首先被加载的文件。默认为index.js
-* scripts 定义常用命令
-* dependencies 依赖包列表
-* devDependencies 开发额外依赖包列表
+
+#### name 
+* 模块名
+* 要全部小写，无空格，可以用下划线和破折号
+
+#### version 
+* 版本信息
+
+#### main  
+* 主入口文件
+* 模块引入后，首先被加载的文件
+* 默认为index.js
+
+#### bin
+* 指定可以执行文件
+* 格式为KV对，cmd-name : path
+
+#### scripts 
+* 定义常用命令
+* 格式为KV对，event-name : command
+
+#### XXXdependencies
+* 定义依赖模块列表
+* 格式为KV对，mod-name : mod—version
+
+##### 版本格式
+* version 精确版本
+* > version 大于某版本
+* < version 小于某版本
+* ~ version 约等于某版本
+* ver1 - ver2 等于 ver1 <= xxx <= ver2
+
+##### 类型
+* dependencies 正常依赖
+* devDependencies 开发额外依赖
 * bundledDependencies  发布时被一起打包的模块
-* config 存放不易变化的配置信息
-* private 设置为true时，私有模块将无法发布
+* peerDependencies 作为插件的依赖（需要在宿主工程上安装）
+* optionalDependencies 可选依赖，安装失败时npm会继续运行
+
+#### config 
+* 存放不易变化的配置信息
+
+#### private 
+* 设置为true时，私有模块将无法发布
 
 
 ### 依赖版本格式

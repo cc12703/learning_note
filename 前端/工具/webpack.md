@@ -165,7 +165,7 @@ module.exports = {
 module.exports = {
     context: path.join(__dirnamne, './src')
     entry: {
-        pageA: './src/pageA.ja'
+        pageA: './src/pageA.js'
         pageB: './src/pageB.js'
         vender: ['react']
    }
@@ -183,3 +183,39 @@ module.exports = {
 
 ### 一切皆模块
 * 所有的静态资源都是模块，可以像加载js文件一样处理
+
+### loader
+
+#### 概述
+* 本质上是一个函数，格式：output = loader(input)
+* 可以进行链式操作，对一种资源设置多个loader
+
+
+### 各种loader
+
+#### babel-loader
+* 用于处理ES6+语法，并将其编译成ES5
+
+##### 子模块
+* babel-loader：使babel与webpack协同工作
+* @babel/core：Babel编译器
+* @babel/preset-env：官方的预置器，用于自动添加插件和补丁
+
+##### 配置
+```js
+{
+    exclude: /node_modules/, //排除该目录
+    use: {
+        options: {
+            cacheDirectory: true, //启动缓存机制，防止重复打包
+            presets: [[
+                'env', { 
+                    modules: false //阻止babel将ES6 Module转化为CommonJS形式
+                }
+            ]]
+        }
+    } 
+}
+```
+
+* 支持从.babelrc中读取配置
