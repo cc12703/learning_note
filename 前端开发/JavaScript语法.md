@@ -258,6 +258,76 @@ var res = str.replace(/microsoft/i, "w3cschool");
 * 成员默认值为0
 
 
+## 模块化
+
+### CommonJS
+
+#### 概述
+* 最初为服务端设计
+* 每个文件是一个模块，有一个局部的作用域
+* 使用module.exports进行导出
+* 使用module对象来存放当前模块的信息
+* 使用require进行导入
+* 导入模块时，模块只会被加载一次并存入缓存
+
+#### 特点
+* 模块依赖关系的建立是动态的，发生在代码运行阶段
+* 导入模块时，获取的是一份导出值的拷贝
+
+#### 例子
+```js
+module.exports = {
+    name: 'Calculater',
+    add: function(a, b) {
+        return a + b;
+    }
+}
+
+const calculator = require('./calculator.js')
+```
+
+
+### ES6
+
+#### 概述
+* 每个文件是一个模块，有一个局部的作用域
+* 使用export进行命名导出，可以有多个
+* 使用export default进行默认导出，只能有一个
+* 使用import {} 来导入命名导出
+* 使用import * as 来整体导入
+* 使用import 来导入默认导出
+* 使用as来进行导入、导出的重命名
+
+#### 特点
+* 模块依赖关系的建立是静态的，发生在代码编译阶段
+* 导入模块时，获取的是一个动态映射，且不可改变
+
+
+#### 静态优点
+* 可以进行死代码的检测和排除
+* 可以进行模块变量类型检查
+* 可以进行编译器优化
+
+
+#### 例子
+```js
+export const name = 'calculator'
+export add = function(a, b) { return a + b; }
+
+export default {
+    name: 'calculator'
+    add: function(a, b) {
+        return a + b;
+    }
+}
+
+
+import { name, add as getSum } from './calculator.js'
+import * as calculator from './calculator.js'
+import React, { Component } from 'react'
+
+```
+
 
 ## 最佳实践
 

@@ -9,6 +9,22 @@
 * 随node.js一起发布的
 
 
+
+## 模块化支持
+
+#### 安装
+* npm install xxx --save
+* 模块被安装在工程的node_modules目录下
+* 依赖信息记录在package.json中
+
+#### 加载
+* import xxx from 'lodash'  加载整个模块
+* import xxx from 'lodash/fp/all.js' 加载模块内部的某个文件
+
+#### 定义
+* 每个模块都有一个入口
+* 入口定义在模块package.json的main字段中
+
 ## 命令
 
 ### 更新
