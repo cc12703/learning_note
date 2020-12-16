@@ -3,6 +3,8 @@
 
 * 原始文档： https://developer.android.com/training/dependency-injection/hilt-android
 
+[TOC]
+
 
 ## 概述
 * 是一个依赖注入库，减少手工管理依赖时需要的模板代码
@@ -355,3 +357,61 @@ class AnalyticsAdapter @Inject constructor(
   activity: FragmentActivity
 ) { ... }
 ```
+
+
+## Hilt未支持类
+
+* Hilt本身支持了大部分的android类，但是仍然需要处理一些Hilt不支持的类
+* 这个时候你需要使用@EntryPoint枚举
+
+### @EntryPoint
+* 这个入口点定义了一个边界，在Hilt管理的代码和不管理的代码之间。
+* 从这个点开始，代码将进入Hilt管理的对象依赖图中
+* 这个入口点允许Hilt使用外部代码来在依赖图中提供依赖
+
+### 例子
+* 定义一个接口类，使用@EntryPoint进行标注
+* 使用EntryPointAccessors中的静态方法来访问入口点
+
+```kotlin
+//定义
+class ExampleContentProvider : ContentProvider() {
+  @EntryPoint
+  @InstallIn(ApplicationComponent::class)
+  interface ExampleContentProviderEntryPoint {
+    fun analyticsService(): AnalyticsService
+  }
+  ...
+}
+
+//使用
+class ExampleContentProvider: ContentProvider() {
+    ...
+  override fun query(...): Cursor {
+    val appContext = context?.applicationContext ?: throw IllegalStateException()
+    val hiltEntryPoint = EntryPointAccessors.fromApplication(appContext, 
+                  ExampleContentProviderEntryPoint::class.java)
+    val analyticsService = hiltEntryPoint.analyticsService()
+    ...
+  }
+}
+
+```
+
+## Hilt和Dagger
+
+### 概述
+* Hilt是建立在Dagger这个依赖注入库之上的
+* 提供了一个标准的方法将Dagger整合进android应用中
+* Hilt可以减少Dagger相关的模块代码的书写
+
+### Hilt目标
+* 简化Dagger相关的基础设施
+* 创建一个组件和作用域的标准集，用于简化设置、提高可读性、在应用间共享代码
+* 提供一个简单的方法在不同的绑定之间进行切换（测试环境、调试环境、发布环境）
+
+### Hilt自动生成和预置
+* 集成android框架类的组件：Dagger中需要手动创建
+* 作用域标注
+* 预定义绑定
+* 预定义作用域：@ApplicationContext, @ActivityContext
