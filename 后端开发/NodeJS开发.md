@@ -209,3 +209,10 @@ util.inherits(Stream, events.EventEmitter);
 
 ##### 尾触发与next
 需要手工调用才能持续执行后续的调用
+
+
+
+
+## 参考资料
+* 《深入浅出Node.js》
+* 《了不起的Node.js》

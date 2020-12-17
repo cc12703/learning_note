@@ -2,7 +2,7 @@
 
 # Kotlin语法
 
-
+[TOC]
 
 
 ## 特征
@@ -289,3 +289,19 @@ fun joinToStr(
 
 * 泛型主要用于限制集合类持有的对象类型，使得类型更加安全
 * 泛型实现都使用了运行时类型擦除方式，对于语法的约束是在编译阶段
+
+
+## 用例
+
+### apply方法
+```kotlin
+
+//原始代码
+val bundle = Bundle()
+bundle.putSerializable("url","http://tjjqrby.aiquanbar.cn")
+fragment.arguments = bundle
+
+
+//简化后代码
+ fragment.arguments = Bundle().apply { putSerializable("url","http://tjjqrby.aiquanbar.cn") }
+```
