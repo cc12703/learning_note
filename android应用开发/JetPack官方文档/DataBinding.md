@@ -137,3 +137,164 @@ android {
 * 使用 **\@{}** 语法用于访问变量中的属性
 
 ### 数据对象
+* 设想一个普通的旧式类 User
+* 在应用中这种情况比较普遍，保存的数据只读取一次后就不再改变
+* 这种类也会带有一些约定的方法，用于读取、设置数据
+* 从data-binding来看，这两种类都是一样的
+* 表达式 @{user.firstName} 用于读取给定类的firstName属性，也会调用getFirstName()函数，或者firstName()函数
+
+
+```java
+public class User {
+  public final String firstName;
+  public final String lastName;
+  public User(String firstName, String lastName) {
+      this.firstName = firstName;
+      this.lastName = lastName;
+  }
+}
+
+public class User {
+  private final String firstName;
+  private final String lastName;
+  public User(String firstName, String lastName) {
+      this.firstName = firstName;
+      this.lastName = lastName;
+  }
+  public String getFirstName() {
+      return this.firstName;
+  }
+  public String getLastName() {
+      return this.lastName;
+  }
+}
+```
+
+### 绑定数据
+* 每个布局文件都会生成一个绑定类
+* 默认情况下，类名是就与布局文件名生成的：转换文件名为大小写形式，并加上绑定后缀名
+    * 例子：activity_main.xml 转换后 ActivityMainBinding
+* 该类保存了所有布局属性到控件的绑定，知道如何给绑定表达式赋值
+
+#### 创建绑定对象
+##### 方式1
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    val binding: ActivityMainBinding = 
+            DataBindingUtil.setContentView(this, R.layout.activity_main)
+    binding.user = User("Test", "User")
+}
+```
+
+##### 方式2
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    val binding: ActivityMainBinding = 
+            ActivityMainBinding.inflate(getLayoutInflater())
+    binding.user = User("Test", "User")
+}
+```
+
+##### 方式3
+* 用于在Fragment, ListView, RecyclerView适配器中绑定项目
+
+```kotlin
+val listItemBinding = ListItemBinding.inflate(layoutInflater, viewGroup, false)
+// or
+val listItemBinding = DataBindingUtil.inflate(layoutInflater, R.layout.list_item, viewGroup, false)
+```
+
+### 表示式语法
+#### 公共特性
+* 表达式语法看起来非常像受控代码中的表达式
+* 使用以下的操作符合关键字
+    * 数学操作：+, -, /, *, %
+    * 字符串连接：+
+    * 逻辑操作：&&, ||
+    * 二进制操作：&, |, ^
+    * 一元操作：+， -， !， ~
+    * 移位操作：>>, >>>, <<
+    * 比较： ==，>, <, >=, <=
+    * instanceof
+    * 分组：()
+    * 字面量：字母、字符、数字、null
+    * 数据类型转换
+    * 方法调用
+    * 属性访问
+    * 数组访问
+    * 三元操作：?:
+
+#### 缺失操作符
+* this
+* super
+* new
+* 显示的通用调用
+
+#### null聚合操作符
+* ?? 含义：如果左操作符不为空则选该操作符，若为空则选择右操作符
+
+##### 例子
+```xml
+android:text="@{user.displayName ?? user.lastName}"
+
+<!-- 等价于 -->
+android:text="@{user.displayName != null ? user.displayName : user.lastName}"
+```
+
+#### 属性引用
+* 使用以下格式，表达式可以引用一个类的属性
+* 不管属性是纯的字段、get函数、ObservableField对象
+
+```xml
+android:text="@{user.lastName}"
+```
+
+#### 避免空指针异常
+* 生成的绑定代码会自动检查空值，避免空指针异常
+* 对于表达式 @{user.name}，如果user是null，则user.name将会赋予默认值null
+* 如果你引用 user.age 且age是整型，则默认值为0
+
+#### 控件引用
+* 表达式可以引用同一布局中的其他控件，通过使用标识符
+* 标识符将会转换成 驼峰式大小写
+
+```xml
+<EditText
+    android:id="@+id/example_text"
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent"/>
+<TextView
+    android:id="@+id/example_output"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="@{exampleText.text}"/>
+```
+
+#### 数组
+* 通用数组可以通过 [ ] 操作符来读取
+* 包括：arrays, lists, sparse lists, maps
+
+```xml
+<data>
+    <import type="android.util.SparseArray"/>
+    <import type="java.util.Map"/>
+    <import type="java.util.List"/>
+    <variable name="list" type="List&lt;String>"/>
+    <variable name="sparse" type="SparseArray&lt;String>"/>
+    <variable name="map" type="Map&lt;String, String>"/>
+    <variable name="index" type="int"/>
+    <variable name="key" type="String"/>
+</data>
+
+android:text="@{list[index]}"
+
+android:text="@{sparse[index]}"
+
+android:text="@{map[key]}"
+
+android:text="@{map.key}"
+```
