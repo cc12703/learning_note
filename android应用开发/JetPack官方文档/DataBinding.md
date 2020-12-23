@@ -298,3 +298,103 @@ android:text="@{map[key]}"
 
 android:text="@{map.key}"
 ```
+
+#### 字面量
+* 如果属性值用单引号包围，则字面量用双引导
+* 如果属性值用双引号包围，则字面量可以用反引导
+
+```xml
+android:text='@{map["firstName"]}'
+android:text="@{map[`firstName`]}"
+```
+
+#### 资源
+* 可以直接引用应用的资源
+* 可以求值格式化字符串
+* 可以将属性引用和控件引用作为资源参数
+
+```xml
+android:padding="@{large? @dimen/largePadding : @dimen/smallPadding}"
+
+android:text="@{@string/nameFormat(firstName, lastName)}"
+android:text="@{@plurals/banana(bananaCount)}"
+
+android:text="@{@string/example_resource(user.lastName, exampleText.text)}"
+
+```
+
+##### 资源类型
+| 类型 | 正常引用 | 表达式引用 |
+| -- | -- | -- | 
+| String[] | @array | @stringArray |
+| int[] | @array | @intArray |
+| TypedArray | @array | @typedArray |
+| Animator | @animator | @animator | 
+| StateListAnimator | @animator | @stateListAnimator |
+| color int | @color | @color |
+| ColorStateList | @color | @colorStateList |
+
+
+#### 事件处理
+* data-binding库允许你写表达式来处理控件分发过来的事件
+* 事件名字由监听器的方法名确定，除了一些特例
+    * 例子：View.OnClickListener包含onClick()函数，对应事件为android:onClick
+
+
+##### 特殊事件
+| 类 | 监听器方法 | 事件属性 |
+| -- | -- | -- | 
+| SearchView | setOnSearchClickListener | android:onSeachClick | 
+| ZoomControls | setOnZoomInClickListener | android:onZoomIn | 
+| ZoomControls | setOnZoomOutClickListener | android:onZoomOut |
+
+##### 处理方式
+###### 方法引用
+* 可以遵照监听器方法的签名来引用方法
+* data-binding库会在一个监听器中包含引用的方法和方法所有者的对象，并给目标控件设置该监听器
+* 如果表达式求值结果为null，则库不会创建监听器，并设置null给目标控件
+
+###### 监听器绑定
+* lambda表达式在事件发生时才会求值
+* data-binding库总是会创建一个监听器并设置给目标控件
+* 当事件被分发时，监听器将会求值lambda表达式
+
+
+##### 方法引用
+* 事件可以直接绑定给处理方法，非常像android:onClick在activityh中被指派一个方法
+* 相对于View的onClick属性，方法引用的主要优势就是表达式是在编译时被处理的
+    * 如果方法不存在或者签名不正确，可以在编译阶段就得到信息
+* 相比于监听器绑定最大的不同在于实际监听器创建是在数据被绑定时，而不是事件被触发时
+    * 如果你希望事件发生时表示式被求值，请使用监听器绑定
+* 給事件分配一个处理器，可以使用正常的绑定表达式
+
+```kotlin
+class MyHandlers {
+    fun onClickFriend(view: View) { ... }
+}
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+   <data>
+       <variable name="handlers" type="com.example.MyHandlers"/>
+       <variable name="user" type="com.example.User"/>
+   </data>
+   <LinearLayout
+       android:orientation="vertical"
+       android:layout_width="match_parent"
+       android:layout_height="match_parent">
+       <TextView android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:text="@{user.firstName}"
+           android:onClick="@{handlers::onClickFriend}"/>
+   </LinearLayout>
+</layout>
+```
+
+##### 监听器绑定
+* 绑定的表达式，在事件发生时才会执行
+* 这个和方法引用很相似，但是可以运行任意数据绑定表达式
+* 在方法引用中，方法的参数必须匹配事件监听器方法的参数
+* 在监听器绑定中，只需要返回值匹配事件监听器方法的返回值即可
