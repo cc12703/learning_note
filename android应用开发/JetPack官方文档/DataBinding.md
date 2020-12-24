@@ -4,6 +4,8 @@
 
 * 原始文档： https://developer.android.com/topic/libraries/data-binding
 
+[TOC]
+
 
 ## 概述
 ### 总体
@@ -398,3 +400,173 @@ class MyHandlers {
 * 这个和方法引用很相似，但是可以运行任意数据绑定表达式
 * 在方法引用中，方法的参数必须匹配事件监听器方法的参数
 * 在监听器绑定中，只需要返回值匹配事件监听器方法的返回值即可
+
+###### 回调函数
+* 当在表达式中使用回调函数时，data-binding会创建一个监听器对象并注册给该事件
+* 当控件触发该事件时，data-binding会求值指定的表达式
+* 在正常的绑定表达式中，当前表达式被求值时，你仍然会获得null和线程安全
+
+###### 监听器参数
+* 监听器绑定提供了两种方式用于处理参数
+    * 忽略所有的参数
+    * 命名所有的参数
+
+###### 例子
+```xml
+android:onClick="@{() -> presenter.onSaveClick(task)}"
+android:onClick="@{(view) -> presenter.onSaveClick(task)}"
+
+android:onClick="@{(theView) -> presenter.onSaveClick(theView, task)}"
+```
+
+###### 默认值
+* 如果表达式因为null而无法被求值，则data-binding会返回对应类型的默认值
+* 例子：引用类型为null， 整数类型为0，布尔类型为false
+
+###### 谓语
+* 如果需要在表达式中使用谓语(三元语法)，可以使用void作为符号
+
+```xml
+android:onClick="@{(v) -> v.isVisible() ? doSomething() : void}"
+```
+
+###### 避免复杂监听器
+* 监听器表达式非常强大，可以使你的代码更容易阅读
+* 另一面，如果使用太复杂表达式，会使你的布局更难阅读和维护
+* 表达式应该足够简单：只从控件中传递数据给回调函数，在回调函数中实现业务逻辑
+
+
+#### 其他特性
+* 导入：更容易在布局文件中引用类
+* 变量：允许你描述一个属性，用于绑定表达式
+* include：在应用中重用复杂的布局
+
+##### 导入
+* 允许在布局文件中更容易的引用一个类
+* 在data元素内可以使用0、多个import元素
+* java.lang.* 会被自动导入
+
+```xml
+<data>
+    <import type="android.view.View"/>
+</data>
+
+<TextView
+   android:text="@{user.lastName}"
+   android:layout_width="wrap_content"
+   android:layout_height="wrap_content"
+   android:visibility="@{user.isAdult ? View.VISIBLE : View.GONE}"/>
+```
+
+###### 类型别名
+* 当类名冲突时，可以将一个类名重命名成别名
+
+```xml
+<import type="android.view.View"/>
+<import type="com.example.real.estate.View"
+        alias="Vista"/>
+```
+
+###### 导入其他类
+* 导入可以用于类型引用
+* 导入可以用于表达式的case部分
+* 导入可以用于静态属性、方法的引用
+
+```xml
+<data>
+    <import type="com.example.User"/>
+    <import type="java.util.List"/>
+    <variable name="user" type="User"/>
+    <variable name="userList" type="List&lt;User>"/>
+</data>
+
+<TextView
+   android:text="@{((User)(user.connection)).lastName}"
+   android:layout_width="wrap_content"
+   android:layout_height="wrap_content"/>
+```
+
+```xml
+<data>
+    <import type="com.example.MyStringUtils"/>
+    <variable name="user" type="com.example.User"/>
+</data>
+…
+<TextView
+   android:text="@{MyStringUtils.capitalize(user.lastName)}"
+   android:layout_width="wrap_content"
+   android:layout_height="wrap_content"/>
+```
+
+##### 变量
+* 在data元素中可以使用多个variable元素
+* 每个variable元素描述一个属性：可以被设置，可以在绑定表达式中本地使用
+
+```xml
+<data>
+    <import type="android.graphics.drawable.Drawable"/>
+    <variable name="user" type="com.example.User"/>
+    <variable name="image" type="Drawable"/>
+    <variable name="note" type="String"/>
+</data>
+```
+
+###### 类型
+* 变量类型是在编译时被检查处理的
+* 如果变量实现了Observable接口或者是Observale集合，则变量将会被观察
+* 如果变量只是一个基础类或者没有实现Observable接口，则变量将不会被观察
+
+###### 合并
+* 如果给不同配置（竖屏、横屏）创建不同的布局文件，则变量会被合并
+* 在这些布局文件中定义变量时需要保证名字不冲突
+
+###### 默认值
+* 生成的类中会给每个变量生成一个setter函数、一个getter函数
+* 变量在没有被设置时，会有一个默认值
+    * 引用类型为null
+    * 整数类型为0
+    * 布尔类型为false
+
+###### context变量
+* 该变量会被自动生成，可以用于表达式中
+* 该变量值来源于根控件的getContext()方法
+* 该变量可以通过定义同名的变量被覆盖掉
+
+##### include
+* include其他布局文件时，可以传入变量
+* 不支持在merge元素中直接使用include
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:bind="http://schemas.android.com/apk/res-auto">
+   <data>
+       <variable name="user" type="com.example.User"/>
+   </data>
+   <LinearLayout
+       android:orientation="vertical"
+       android:layout_width="match_parent"
+       android:layout_height="match_parent">
+       <include layout="@layout/name"
+           bind:user="@{user}"/>
+       <include layout="@layout/contact"
+           bind:user="@{user}"/>
+   </LinearLayout>
+</layout>
+```
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:bind="http://schemas.android.com/apk/res-auto">
+   <data>
+       <variable name="user" type="com.example.User"/>
+   </data>
+   <merge><!-- Doesn't work -->
+       <include layout="@layout/name"
+           bind:user="@{user}"/>
+       <include layout="@layout/contact"
+           bind:user="@{user}"/>
+   </merge>
+</layout>
+```
