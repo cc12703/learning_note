@@ -570,3 +570,197 @@ android:onClick="@{(v) -> v.isVisible() ? doSomething() : void}"
    </merge>
 </layout>
 ```
+
+## 可观察数据对象
+* 可观察性是指一个对象在其内部数据变更时会通知其他对象
+* data-binding库允许对象、属性、集合变成可观察的
+* 一个普通对象也可以用于data-binding，但是无法在修改对象后自动触发界面更新
+* data-binding库可以用来给数据对象增加这种能力，有点像监听器
+
+### 可观察属性
+* 可观察性工作涉及创建类实现Observale接口
+* 如果只有几个少量的属性，这些工作会变得不值得
+* 这种情况下可以使用通用的Observable类，使基本数据类型具有可观察性
+
+#### 类
+* ObservableBoolean
+* ObservableByte
+* ObservableChar
+* ObservableShort
+* ObservableInt
+* ObservableLong
+* ObservableFloat
+* ObservableDouble
+* ObservableParcelable
+
+#### 特点
+* 一个自包含的可观察对象，内部只有一个属性
+* 基础类型版本可以避免在存取操作时发生拆箱、装箱操作
+
+#### 例子
+```kotlin
+class User {
+    val firstName = ObservableField<String>()
+    val lastName = ObservableField<String>()
+    val age = ObservableInt()
+}
+
+//使用
+user.firstName = "Google"
+val age = user.age
+```
+
+### 可观察集合
+* 一些应用会使用动态结构保存数据
+* 可观察集合运行使用键来存取这些结构
+
+#### ObservableArrayMap
+* 键可以使用引用类型，像String
+
+##### 例子
+```kotlin
+ObservableArrayMap<String, Any>().apply {
+    put("firstName", "Google")
+    put("lastName", "Inc.")
+    put("age", 17)
+}
+```
+
+```xml
+<data>
+    <import type="android.databinding.ObservableMap"/>
+    <variable name="user" type="ObservableMap<String, Object>"/>
+</data>
+…
+<TextView
+    android:text="@{user.lastName}"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+<TextView
+    android:text="@{String.valueOf(1 + (Integer)user.age)}"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+```
+
+#### ObservableArrayList
+* 键是整型的
+
+##### 例子
+```kotlin
+ObservableArrayList<Any>().apply {
+    add("Google")
+    add("Inc.")
+    add(17)
+}
+```
+
+```xml
+<data>
+    <import type="android.databinding.ObservableList"/>
+    <import type="com.example.my.app.Fields"/>
+    <variable name="user" type="ObservableList<Object>"/>
+</data>
+…
+<TextView
+    android:text='@{user[Fields.LAST_NAME]}'
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+<TextView
+    android:text='@{String.valueOf(1 + (Integer)user[Fields.AGE])}'
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+```
+
+### 可观察对象
+* 该对象实现了Observable接口
+* 该接口允许注册一些监听者，希望在对象属性变动时被通知到
+
+#### BaseObservable
+* Observable接口有一套添加、删除监听器的机制，但是需要实现者决定何时发送通知
+* 为了简化开发，data-binding库提供了BaseObservable类
+* 该类实现了监听者的注册机制
+* 通过使用Bindable标注和调用notifyPropertyChanged()来实现可观察的功能
+
+##### 例子
+```kotlin
+class User : BaseObservable() {
+
+    @get:Bindable
+    var firstName: String = ""
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.firstName)
+        }
+
+    @get:Bindable
+    var lastName: String = ""
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.lastName)
+        }
+}
+```
+
+##### 生成
+* data-binding库会在模块包中生成一个名为BR的类
+* 该类包含了用于数据绑定的资源ID号
+* Bindable标注会在BR类中生成一个数据项
+
+#### 其他方法
+* 如果数据类的基类无法修改，则可以使用PropertyChangeRegistry来实现可观察性
+
+
+## 生成的绑定类
+* 绑定类用于存取布局中的变量和控件
+* 绑定类链接着布局变量和布局中的控件
+* 绑定类的包名和类名都可以自定义
+* 所有的绑定类都继承于ViewDataBinding类
+
+### 名字
+* 每个布局文件会生成一个对应的绑定类
+* 类名字基于布局文件名生成：将布局文件名转成骆驼大小写形式，加上Binding后缀
+    * 例子：activity_main.xml 对应类名 ActivityMainBinding
+
+### 创建绑定对象
+* 绑定对象会在布局inflating后立刻生成
+* 这样可以确保在使用布局中的表达式绑定视图控件之前，视图层次不会发生变动
+* 大部分情况下，都可以使用绑定类中的静态
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    val binding: MyLayoutBinding = MyLayoutBinding.inflate(layoutInflater)
+
+    val binding: MyLayoutBinding = MyLayoutBinding.inflate(getLayoutInflater(), viewGroup, false)
+
+    //布局已经生成，可以直接绑定
+    val binding: MyLayoutBinding = MyLayoutBinding.bind(viewRoot)
+
+    //绑定类型未知
+    val viewRoot = LayoutInflater.from(this).inflate(layoutId, parent, attachToParent)
+    val binding: ViewDataBinding? = DataBindingUtil.bind(viewRoot)
+
+    setContentView(binding.root)
+}
+```
+
+### 带ID的视图控件
+* data-binding会在绑定类中给每个有ID的视图控件创建一个不可变的属性
+* 库会中视图层次中提取这些带ID的控件，效率会比调用findViewById()更高
+
+
+### 变量
+* data-binding会给布局中定义的变量生成一个存取方法（包括setter, getter）
+
+```xml
+<data>
+   <import type="android.graphics.drawable.Drawable"/>
+   <variable name="user" type="com.example.User"/>
+   <variable name="image" type="Drawable"/>
+   <variable name="note" type="String"/>
+</data>
+```
+
+
+### ViewStub
