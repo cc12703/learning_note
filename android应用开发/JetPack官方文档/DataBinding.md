@@ -763,4 +763,82 @@ override fun onCreate(savedInstanceState: Bundle?) {
 ```
 
 
-### ViewStub
+### ViewStubs
+* 不像正常视图，ViewStub开始于一个不可见视图
+* 当它们变得可见时，或者主动需要inflate时。它们会被其他布局替换掉
+
+#### ViewStubProxy
+* 由于ViewStub在视图层次中是不可见的，所以在绑定对象上，该视图也应该是不可见的，已方便被GC
+* 由于视图是不可变的，所以在绑定类中VeiwStubProxy会替换ViewStub，用于在ViewStub存在时，存取该对象
+* 当inflating其他布局时，一个绑定必须确定连接和新生成的布局
+* ViewStubProxy必须监听ViewStub的OnInflateLisener，并确定绑定完成
+* 由于指定的时间内只有一个监听器可以存在，所以ViewStubProxy允许设置一个OnInflateLisener，该回调会在绑定确定后被调用
+
+### 立即绑定
+* 当变量、可观察对象变更时，绑定会在下一帧显示前被调度来做变更
+* 当需要绑定立刻变更时，需要调用executePendingBindings()方法
+
+### 高级绑定
+#### 动态变量
+* 有时候，绑定类的类型是不需要知道的
+    * RecyclerView.Adapter 操作任意布局时，是不需要知道绑定类的类型的
+    * 在调用onBindViewHolder()时，都需要指派一个绑定值
+
+##### 例子
+* 所有被RecyclerView绑定的布局，都有一个item变量
+* BindingHolder对象有一个getBinding()函数用于返回ViewDataBinding对象
+
+```kotlin
+override fun onBindViewHolder(holder: BindingHolder, position: Int) {
+    item: T = items.get(position)
+    holder.binding.setVariable(BR.item, item);
+    holder.binding.executePendingBindings();
+}
+```
+
+### 后台线程
+* 你可以在后台线程中修改数据对象，只要数据对象是非数组
+* data-binding库会在求值时，对变量、属性进行局部化操作，已避免出现并发问题
+
+
+### 自定义绑定类名
+#### 默认规则
+* 大写字母开头
+* 移除下划线，大写化后面的字母
+* 增加后缀名，Binding
+* 类放置于模块包的databinding子包下
+
+#### 自定义
+* 使用data元素的class属性进行自定义操作
+
+```kotlin
+<!-- 只定义了类名 -->
+<data class="ContactItem">
+    …
+</data>
+
+<!-- 放置于当前包下 -->
+<data class=".ContactItem">
+    …
+</data>
+
+<!-- 使用全限定名，自定义类名和要存放的包 -->
+<data class="com.example.ContactItem">
+    …
+</data>
+```
+
+
+## 绑定适配器
+* 用于使用合适的系统接口来设置值
+    * 调用setText()来设置值
+    * 调用setOnClickListener()来设置事件监听器
+* data-binding允许使用自定义的方法来设置值
+
+### 设置属性值
+* 当一个绑定值变更时，生成的绑定类必须要使用绑定表达式，在视图上调用setter方法
+* 你可以让data-binding库自动选择方法，或者指定一个方法
+
+#### 自动方法选择
+* 像属性名example，库会自动查找格式为setExample(arg)，参数又是类型兼容的方法。
+* 当进行方法搜索时，不会考虑属性的命名空间，只有属性名和类型会被考虑

@@ -1,6 +1,8 @@
 
 # markmap
 
+[TOC]
+
 ## 功能
 * 使用思维脑图，可视化markdown文件
 
