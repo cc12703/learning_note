@@ -839,6 +839,431 @@ override fun onBindViewHolder(holder: BindingHolder, position: Int) {
 * 当一个绑定值变更时，生成的绑定类必须要使用绑定表达式，在视图上调用setter方法
 * 你可以让data-binding库自动选择方法，或者指定一个方法
 
-#### 自动方法选择
+#### 自动选择方法
 * 像属性名example，库会自动查找格式为setExample(arg)，参数又是类型兼容的方法。
-* 当进行方法搜索时，不会考虑属性的命名空间，只有属性名和类型会被考虑
+* 当进行方法搜索时，不会考虑属性的命名空间，只会考虑属性名和类型
+
+##### 例子
+* 对于表达式 android:text="@{user.name}"，库会查找setText(arg)方法，arg类型是user.getName()的返回类型
+* 如果uesr.getName()返回字符串类型，库就会查找接收字符串类型的setText()方法
+* 如果表达式返回整型，则库会查找接收整型的setText()方法
+
+##### 无属性
+* 在给定的名字不存在属性时，data-binding也可以运行。可以通过setter方法来创建对应的属性
+
+```xml
+<android.support.v4.widget.DrawerLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:scrimColor="@{@color/scrim}"
+    app:drawerListener="@{fragment.drawerListener}">
+```
+说明
+* app:scrimColor对应setScrimColor(int)方法
+* app:drawerListener对应setDrawerListener(DrawerListener)方法
+
+
+#### 自定义方法名
+* 对于部分属性名字和setter函数名不一致的情况，可以使用BindingMethods标注来给属性分配一个setter函数
+* 该标注用在类上，可以包含多个BindingMethod标注，每个BindingMethod对应一个重命名方法
+
+```kotlin
+@BindingMethods(value = [
+    BindingMethod(
+        type = android.widget.ImageView::class,
+        attribute = "android:tint",
+        method = "setImageTintList")])
+```
+说明
+* android:tint属性分配了setImageTintList(ColorStateList)方法
+
+
+
+#### 提供自定义逻辑
+* 一些属性需要自定义绑定逻辑
+* 像android:paddingLeft属性，只有setPadding(left, top, right, bottom)方法
+* 使用BindingAdapter标注一个静态方法，可以自定义setter逻辑
+
+
+```kotlin
+@BindingAdapter("android:paddingLeft")
+fun setPaddingLeft(view: View, padding: Int) {
+    view.setPadding(padding,
+                view.getPaddingTop(),
+                view.getPaddingRight(),
+                view.getPaddingBottom())
+}
+```
+说明
+* 该例子给paddingLeft属性绑定了函数
+* 第一个参数决定了包含该属性的视图的类型
+* 第二个参数决定了在表达式中该属性可以接受的类型
+
+
+##### 多个属性
+* 适配器函数可以接受多个属性
+
+```kotlin
+@BindingAdapter("imageUrl", "error")
+fun loadImage(view: ImageView, url: String, error: Drawable) {
+    Picasso.get().load(url).error(error).into(view)
+}
+```
+```xml
+<ImageView app:imageUrl="@{venue.imageUrl}" app:error="@{@drawable/venueError}" />
+```
+说明
+* 该函数只有在imageUrl, error属性都被使用，而且数据类型匹配时，才会被调用
+
+##### 任意匹配
+* 将reqireAll设置为false时，任意属性被设置时，函数都会被调用
+
+```kotlin
+@BindingAdapter(value = ["imageUrl", "placeholder"], requireAll = false)
+fun setImageUrl(imageView: ImageView, url: String?, placeHolder: Drawable?) {
+    if (url == null) {
+        imageView.setImageDrawable(placeholder);
+    } else {
+        MyImageLoader.loadInto(imageView, url, placeholder);
+    }
+}
+```
+
+##### 获取旧值
+* 所有的旧值参数都需要先定义
+
+```kotlin
+@BindingAdapter("android:paddingLeft")
+fun setPaddingLeft(view: View, oldPadding: Int, newPadding: Int) {
+    if (oldPadding != newPadding) {
+        view.setPadding(padding,
+                    view.getPaddingTop(),
+                    view.getPaddingRight(),
+                    view.getPaddingBottom())
+    }
+}
+```
+
+##### 事件处理函数
+* 只有事件处理函数被定义在接口类、包含抽象方法的抽象类时，才可以被使用
+
+```kotlin
+@BindingAdapter("android:onLayoutChange")
+fun setOnLayoutChangeListener(
+        view: View,
+        oldValue: View.OnLayoutChangeListener?,
+        newValue: View.OnLayoutChangeListener?
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+        if (oldValue != null) {
+            view.removeOnLayoutChangeListener(oldValue)
+        }
+        if (newValue != null) {
+            view.addOnLayoutChangeListener(newValue)
+        }
+    }
+}
+```
+```xml
+<View android:onLayoutChange="@{() -> handler.layoutChanged()}"/>
+```
+
+##### 多个方法
+* 当一个监听器类中有多个方法时，必须要拆成多个监听器类
+* 像View.OnAttachStateChangeListener类有两个方法
+    * onViewAttachedToWindow(View)
+    * onViewDetachedFromWindow(View)
+* data-binding库会提供两个接口类，来分别定义两个方法
+
+```kotlin
+@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR1)
+interface OnViewDetachedFromWindow {
+    fun onViewDetachedFromWindow(v: View)
+}
+
+@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR1)
+interface OnViewAttachedToWindow {
+    fun onViewAttachedToWindow(v: View)
+}
+```
+
+```kotlin
+@BindingAdapter(
+        "android:onViewDetachedFromWindow",
+        "android:onViewAttachedToWindow",
+        requireAll = false
+)
+fun setListener(view: View, detach: OnViewDetachedFromWindow?, attach: OnViewAttachedToWindow?) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR1) {
+        val newListener: View.OnAttachStateChangeListener?
+        newListener = if (detach == null && attach == null) {
+            null
+        } else {
+            object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    attach.onViewAttachedToWindow(v)
+                }
+
+                override fun onViewDetachedFromWindow(v: View) {
+                    detach.onViewDetachedFromWindow(v)
+                }
+            }
+        }
+
+        val oldListener: View.OnAttachStateChangeListener? =
+                ListenerUtil.trackListener(view, newListener, R.id.onAttachStateChangeListener)
+        if (oldListener != null) {
+            view.removeOnAttachStateChangeListener(oldListener)
+        }
+        if (newListener != null) {
+            view.addOnAttachStateChangeListener(newListener)
+        }
+    }
+}
+```
+说明
+* android.databinding.adapters.ListenerUtil 用于跟踪前面设置的监听器，以方便在适配器中移除
+
+
+### 对象转换
+#### 自动对象转换
+* 当表达式返回一个Object类型的值时，库会选择一个方法
+* Object类型将会被转换成被选择方法的参数的类型
+
+```xml
+<TextView
+   android:text='@{userMap["lastName"]}'
+   android:layout_width="wrap_content"
+   android:layout_height="wrap_content" />
+```
+说明
+* userMap返回的值，将会被转换成setText(CharSequence)函数中参数的类型
+
+#### 自定义转换
+* 使用BindingConversion标注一个静态方法可以实现
+
+```kotlin
+@BindingConversion
+fun convertColorToDrawable(color: Int) = ColorDrawable(color)
+```
+```xml
+<View
+   android:background="@{isError ? @color/red : @color/white}"
+   android:layout_width="wrap_content"
+   android:layout_height="wrap_content"/>
+```
+
+## 将布局视图绑定到架构组件上
+
+### LiveData
+* 使用LiveData作为数据绑定源，在数据变更时自动通知界面
+* LiveData知道已订阅观察者的生命周期
+* 要在绑定类中使用LiveData，则需要设置生命周期的拥有者
+
+```kotlin
+class ViewModelActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        val binding: UserBinding = DataBindingUtil.setContentView(this, R.layout.user)
+
+        // 设置当前activity为生命周期拥有者
+        binding.setLifecycleOwner(this)
+    }
+}
+```
+
+### ViewModel
+* 可以使用ViewModel来管理UI相关的数据
+* data-binding库可以和ViewModel组件无缝工作
+* 使用ViewModel可以将布局中的UI逻辑移入到该组件中，以方便测试
+
+
+#### 创建
+```kotlin
+class ScheduleViewModel : ViewModel() {
+    val userName: LiveData
+
+    init {
+        val result = Repository.userName
+        userName = Transformations.map(result) { result -> result.value }
+    }
+}
+```
+
+#### 实例化
+```kotlin
+class ViewModelActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // 获取viewModel实例
+        val userModel: UserModel by viewModels()
+
+        val binding: UserBinding = DataBindingUtil.setContentView(this, R.layout.user)
+
+        // 给绑定类设置viewModel
+        binding.viewmodel = userModel
+    }
+}
+```
+
+#### 使用
+```xml
+<CheckBox
+    android:id="@+id/rememberMeCheckBox"
+    android:checked="@{viewmodel.rememberMe}"
+    android:onCheckedChanged="@{() -> viewmodel.rememberMeChanged()}" />
+```
+
+### 可观测ViewModel
+* ViewModel实现Observable后，可以通知其他应用组件数据变更
+* 使用可观测ViewModel可以给你更多的控制权
+
+
+```kotlin
+open class ObservableViewModel : ViewModel(), Observable {
+    private val callbacks: PropertyChangeRegistry = PropertyChangeRegistry()
+
+    override fun addOnPropertyChangedCallback(
+            callback: Observable.OnPropertyChangedCallback) {
+        callbacks.add(callback)
+    }
+
+    override fun removeOnPropertyChangedCallback(
+            callback: Observable.OnPropertyChangedCallback) {
+        callbacks.remove(callback)
+    }
+
+    //通知观察者所有属性都变更
+    fun notifyChange() {
+        callbacks.notifyCallbacks(this, 0, null)
+    }
+
+    
+     //通知观察者指定属性变更
+     // fieldId 参数是属性对应的BR标识，该属性被@Bindable标注
+    fun notifyPropertyChanged(fieldId: Int) {
+        callbacks.notifyCallbacks(this, fieldId, null)
+    }
+}
+```
+
+
+## 双向数据绑定
+* 使用双向数据绑定，你可以给属性设置值，同时给属性设置监听器以响应数据变更
+* @={}符号包含了 "=" 记号，可以接收对属性的数据变更，同时监听用户的更新操作
+* 为了响应后端数据的变更，需要变量实现可观测性
+
+### 使用
+```xml
+<CheckBox
+    android:id="@+id/rememberMeCheckBox"
+    android:checked="@={viewmodel.rememberMe}"
+/>
+```
+
+### 定义数据
+```kotlin
+class LoginViewModel : BaseObservable {
+    // val data = ...
+
+    @Bindable
+    fun getRememberMe(): Boolean {
+        return data.rememberMe
+    }
+
+    fun setRememberMe(value: Boolean) {
+        // 避免无限循环
+        if (data.rememberMe != value) {
+            data.rememberMe = value
+
+            //响应变更
+            saveData()
+
+            // 通知观察者，数据已变更
+            notifyPropertyChanged(BR.remember_me)
+        }
+    }
+}
+```
+
+### 自定义属性
+* 需要使用@InverseBindingAdapter，@InverseBindingMethod 标注
+
+#### 例子
+* 给MyView的time属性创建双向绑定
+* 操作步骤
+    1. 给setter函数标注@BindingAdapter
+    2. 给getter函数标注@InverseBindingAdapter
+    3. 创建设置监听器函数，并标注@BindingAdapter
+
+
+```kotlin
+@BindingAdapter("time")
+@JvmStatic fun setTime(view: MyView, newValue: Time) {
+    // 很重要，防止无限循环
+    if (view.time != newValue) {
+        view.time = newValue
+    }
+}
+
+@InverseBindingAdapter("time")
+@JvmStatic fun getTime(view: MyView) : Time {
+    return view.getTime()
+}
+
+@BindingAdapter("app:timeAttrChanged")
+@JvmStatic fun setListeners(
+        view: MyView,
+        attrChange: InverseBindingListener
+) {
+    // 给点击、触摸、获取焦点设置监听器
+}
+```
+
+### 转换器
+* 用于在变量显示前，将变量格式化、翻译、修改
+* 对于双向绑定，需要定义一个反向转换器
+
+```xml
+<EditText
+    android:id="@+id/birth_date"
+    android:text="@={Converter.dateToString(viewmodel.birthDate)}"
+/>
+```
+```kotlin
+object Converter {
+    //定义反向转换
+    @InverseMethod("stringToDate")
+    @JvmStatic fun dateToString(
+        view: EditText, oldValue: Long,
+        value: Long
+    ): String {
+        // 将长整型转换成字符串
+    }
+
+    @JvmStatic fun stringToDate(
+        view: EditText, oldValue: String,
+        value: String
+    ): Long {
+        // 将字符串转换成长整型
+    }
+}
+```
+
+### 无限循环
+* 在使用双向绑定时，要小心不要引入无限循环
+
+#### 原因
+1. 用户改变属性，标注@InverseBindingAdapter的函数被调用
+1. 新的值被赋给属性， 标注@BindingAdapter的函数被调用
+1. 函数有可能再触发标注@InverseBindingAdapter的函数被调用
+
+#### 措施
+* 在标注@BindingAdapter的函数中，增加新值和旧值的比较操作
+
+
+### 双向绑定属性
+| 类 | 属性 | 绑定适配器 |
+| -- | -- | -- |
+| AdapterView | android:selection | AdapterViewBindingAdapter |
+| TextView | android:text | TextViewBindingAdapter |
+| TabHost | android:currentTab | TabHostBindingAdapter |
+| SeekBar | android:progress | SeekBarBindingAdapter |
