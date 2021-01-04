@@ -86,6 +86,85 @@ class MyActivity : AppCompatActivity() {
 
 说明
 * 展示了activity从旋转屏幕到被结束时的生命周期状态
+* ViewModel会在首次请求时就被创建，然后一直存在直到activity被销毁、结束
 
 ![](https://gitee.com/cc12703/figurebed/raw/master/img/20210104113248.png)
 
+
+## 在fragment间共享数据
+### 案例
+* 一个普遍情况是：activity中存在多个fragment，并且之间需要进行通信
+* 例子：分离界面(主界面-详情界面)的多个fragment
+    * 一个fragment显示列表信息，用户可以从中选择一个列表项
+    * 另一个fragment显示列表项的内容
+
+#### 以前方案
+* 所有的fragment需要定义一些接口
+* activity必须要将多个fragment绑定起来
+* fragment需要处理其他fragment未创建、不可见的情况
+
+#### 新方案示例
+```kotlin
+class SharedViewModel : ViewModel() {
+    val selected = MutableLiveData<Item>()
+
+    fun select(item: Item) {
+        selected.value = item
+    }
+}
+
+class MasterFragment : Fragment() {
+    private lateinit var itemSelector: Selector
+    private val model: SharedViewModel by activityViewModels()
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        itemSelector.setOnClickListener { item ->
+            //更新界面
+        }
+    }
+}
+
+class DetailFragment : Fragment() {
+    private val model: SharedViewModel by activityViewModels()
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        model.selected.observe(viewLifecycleOwner, Observer<Item> { item ->
+            // 更新界面
+        })
+    }
+}
+```
+说明
+* 多个fragment可以共享ViewModel来进行通信
+
+#### 优点
+* activity不需要做任何事，不需要知道通信的细节
+* 多个fragment不需要知道彼此的存在
+    * 如果一个fragment消失了，其他的fragment还可以继续正常运行
+* 每个fragment都有自己的生命周期，彼此之间不会相互影响
+
+
+## 替换Loader
+### 概述
+* Loader像CursorLoader会被频繁用来在应用界面和数据库之间保持数据的同步
+* 你可以使用ViewModel和一些其他类，来替换掉Loader
+* 使用ViewModel可以将界面控制器从数据加载操作中分离出来，意味着类之间有着更少的引用
+
+
+### 以前的方案
+* CursorLoader用于观察数据库的内容
+* 当数据库值变更时，loader会自动触发，并重载数据来更新界面
+
+图示
+![](https://gitee.com/cc12703/figurebed/raw/master/img/20210105102051.png)
+
+### 新方案
+* ViewModel结合Room和LiveData可以替换掉loader
+* ViewModel保证数据在设备配置变更时可以存活下来
+* 当数据库值变更时，Room会通知LiveData
+* LiveData会使用变更后的值更新界面
+
+图示
+![](https://gitee.com/cc12703/figurebed/raw/master/img/20210105102246.png)
