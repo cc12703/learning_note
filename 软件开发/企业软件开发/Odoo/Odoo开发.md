@@ -39,26 +39,25 @@
 * depends 需要依赖的模块，默认为base模块
 * data 视图文件
 
-## base模块
-
-### 概述
+### base模块
+#### 概述
 * 用于提供重要的特性
 
-### 信息资源库
+#### 信息资源库
 * 外部ID以 ir. 开头
 * 用于存储一些基础功能
 
-#### 例子
+##### 例子
 * ir.ui.menu 设置菜单
 * ir.ui.view 用于视图
 * ir.model  用于模型
 * ir.model.fields 用于模型的字段
 
-### 资源
+#### 资源
 * 外部ID以 res. 开头
 * 包括了与国际化相关的模型
 
-#### 例子
+##### 例子
 * res.partner 联系人相关
 * res.company 公司相关
 * res.currency 货币相关
@@ -98,16 +97,49 @@ class Bug(models.Model):
 
 
 ### 字段
+#### 常规字段
+* 字符串：fields.Char, fields.Text
+* 整型：fields.Integer
+* 布尔型：fields.Boolean
+* 浮点型：fields.Float 
+* 日期型：fields.Date, fields.Datetime
+* 下拉列表框：fields.Selection(items, string)
+    * items 选项列表
+    * string 前端显示名
+
 #### 字段属性
 * string 前端界面显示的字段名称
+* default 默认值
 * required true表示不能为空
 * help 前端界面显示的提示信息
 * index true表示会创建索引
+* readonly true表示前端界面不可编辑
+* groups 限定可访问的安全组
+* states 通过字典来设置界面相关的属性
 
 #### 保留字段
 * id 记录的唯一标识
 * create_date 记录的创建日期
 * write_date 记录的最后修改日期
+* active false表示前端界面不会显示
+* state 生命周期状态，Selection类型
+* sequence 定义记录的顺序，可以在前端界面修改
+
+#### 特殊字段
+##### 引用字段
+* 支持动态的关联关系
+* 同一个字段可以引用多个模型
+
+```python
+discovers = fields.Reference(
+    [('res.user', '用户'), ('res.partner', '合作伙伴')], 'bug发现者'
+)
+```
+
+##### 计算字段
+* 可以根据函数自动计算出值
+* 使用了computes属性来指定函数
+
 
 ### 类型
 #### 持久模型
@@ -125,7 +157,61 @@ class Bug(models.Model):
 * 为了方便复用字段、方法
 
 
+### 模型关系
+#### 关系字段
+* fields.Many2one  多对一
+* fields.Many2many 多对多
+* fields.One2Many  一对多
+
+#### many2one
+* 数据库会生成一个外键字段
+
+##### 参数
+* comodel 关联模型的名字
+* string  描述信息
+* ondelete 删除关联记录时该字段的行为
+    * 默认，设置为空
+    * restricted 报错，阻止关联记录被删除
+    * cascade  一起被删除
+
+#### many2many
+* odoo会增加一个关系表来维护关系，默认表名：表名1_表名2_rel
+
+##### 参数
+* comodel 关联模型的名字
+* relation 关联表的名字
+* column1 本模型的关联字段名字
+* column2 关联模型的关联字段名字
+* string 描述信息
+
+
+#### one2many
+* many2one的逆向关系
+* 可以让关联模型获取数据更方便
+* 数据依然存在多(many)一方的底层表中
+
+##### 参数
+* comodel 关联模型的名字
+* inverse_name 关联字段的名字
+
+
 ### 模型继承
+#### 经典继承
+* 最常用的继承方式
+* 若_name不赋值，则不会创建新的模型
+
+#### 原型继承
+* _inherit字段赋值一个模型列表
+* 若_name赋值，则会创建一个新的模型，会继承父模型的所有特征
+
+#### 委托继承
+* _inherits字段赋值一个模型列表
+* 特点：记录会存储在两个表中
+    * 父模型字段存储在父模型对于的表中
+    * 新模型的新字段存储在新模型对于的表中
+    * 通过主外键进行关联
+* 优点：避免在多个表中重复存储数据
+
 #### 传统的继承
 * 允许子类修改父类定义的方法、字段
 * 允许子类新增加字段、方法
@@ -136,110 +222,146 @@ class Bug(models.Model):
 
 
 
-## 视图
-### 概述
-* 通过xml文件定义
-* 框架会解析xml文件并生成html文件
-* 文件放置于views目录下
 
-### 类型
-#### 菜单
-* 使用menuitem进行定义
-* name 前端界面显示
-* id 唯一标识
-* parent 指定父菜单
-* action 指定窗口动作
+### 层级结构
+* 用于处理同一个模型的数据记录之间的关系
 
-```xml
-<menuitem name="bug管理系统" id="bug-manage.menu_root"/>
 
-<menuitem name="bug管理" id="bug-manage.menu_1" parent="bug-manage.menu_root"/>
 
-<menuitem name="bug列表" id="bug-manage.menu_1_list" parent="bug-manage.menu_1"
-              action="bug-manage.action_window"/>
+
+
+## ORM接口
+
+### 修饰器
+#### @api.multi 
+* 处理记录集
+* 使用self参数获取记录集
+
+#### @api.model
+* 在类上增加方法
+* 使用self参数获取对象引用
+
+#### @api.depends
+* 用于触发计算字段的计算操作
+* 格式：（字段1，字段2，...）
+
+#### @api.constraints
+* 用于评估和检查字段
+* 在字段值变化时，会触发检查
+* 格式：（字段1，字段2，...）
+
+#### @api.onchange 
+* 用于用户交互时自动更新相关联字段
+* 在字段值变化时，会触发操作
+* 操作变换后的值只会保存在内存中，不会更新到数据库
+
+
+### 内置方法
+#### 写入操作
+* <model>.create(vals) 创建新记录
+* <recordset>.write(vals)  更新记录
+* <recordset>.unlink()    删除记录
+
+#### RPC网页端
+* read(fields) 读取记录，只包含指定字段，记录是字典形式
+* searc_read() 在结果记录集上执行查找操作
+
+#### 导入导出
+* load(fields, data) 从csv文件中导入数据
+* export_data(fields) 导出数据到csv文件
+
+
+### 其他接口
+#### 获取服务器环境
+* self.env 获取当前用户的运行环境
+* env.uid 当前会话中用户的ID
+* env.contenxt 当前会话的上下文信息
+* env[model.name] 获取指定模型的引用
+* env.sudo(user)  获取指定用户的环境信息
+* env.ref(extID)  使用外部ID获取记录
+
+
+### 操作记录集
+#### 查询
+* search()  使用domain表达式获取记录
+* search_count() 获取指定条件的记录数量
+* browse()
+
+#### 日期时间
+* Datetime.now() 返回当前datetime的字符串
+* Date.today()   返回当前日期的字符串
+* rom_string(val) 将字符串转换为date,datetime对象
+* to_string(val)  将date,datetime对象转换为字符串
+
+
+#### 记录集
+* x in recordset 判断记录是否在记录集中
+* recordset.ids   返回记录ID的列表
+* recordset.ensure_one()  检查是否为单例记录
+* recordset.filtered(func) 过滤记录集
+* recordset.mapped(func)   映射记录集，返回一个列表
+* recordset.sorted(func)   排序记录集
+
+
+### context
+* 用于存储会话数据，按字典格式存放数据
+* 用于前端ORM和后端ORM中
+
+#### 用途
+* 前端：将信息从一个视图传递到下一个视图
+* 后端：提供本地设置和信号信息
+
+### domain
+* 用于筛选数据记录
+* ORM会将该表达式转换为SQL查询语句
+
+#### 表达式语法
+* 是一个条件列表
+* 每个条件是一个元组：('<field-name>', '<operator>', '<value>')
+* 多个条件默认是 “与” 的关系，要满足所有条件
+
+##### operator值
+* 比较符号：<, >, >=, <=, !=,
+* '=like'：匹配模式
+    * ‘_’ 匹配任意一位字符
+    * ‘%’ 匹配任意字符串
+* ‘like’或‘ilike'：匹配%value%模式，大小写不敏感
+* ’in'或'not in'：检测是否包含、不包含在列表中
+
+##### 逻辑运算符
+* 可选： & 与，| 或，! 非
+* 格式：先写逻辑运算符，会对后面的两个元组起作用
+
+##### 例子
+```python
+[('is_done', '=', False)]
+['|', ('follower_ids', 'in', [user.partener_id.id]),
+    '|', 
+        ('user_id', '=', user.id),
+        ('user_id', '=', False)
+]
 ```
 
-#### 窗口动作
-* 用途：将模型的数据显示出来
-* model 固定为 ir.actions.act_window (数据保存在该表中)
-* id 唯一标识，名字中最多只能有一个点
-* res_model 要显示的模型
-* view_mode 视图类型
-
-```xml
-<record model="ir.actions.act_window" id="bug-manage.action_window">
-    <field name="name">bug-manage window</field>
-    <field name="res_model">bm.bug</field>
-    <field name="view_mode">tree,form</field>
-</record>
-```
-
-#### 列表
-* model 固定为 ir.ui.view
-* arch 节点下使用 tree
-
-```xml
-<record model="ir.ui.view" id="bug-manage.list">
-    <field name="name">bug列表</field>
-    <field name="model">bm.bug</field>
-    <field name="arch" type="xml">
-    <tree>
-        <field name="name"/>
-        <field name="is_closed"/>
-        <field name="user_id"/>
-    </tree>
-    </field>
-</record>
-```
-
-#### 业务文档表单
-* arch 节点下使用form
-* 需要定义 header, sheet元素
-    * header 显示在表单上方
-    * sheet 视图的主题部分
 
 
-#### 搜索
-* arch 节点下使用 search
 
-```xml
-<record model="ir.ui.view" id="bug-manage.search">
-    <field name="name">bug搜索</field>
-    <field name="model">bm.bug</field>
-    <field name="arch" type="xml">
-    <search>
-        <field name="name"/>
-        <field name="is_closed"/>
-        <field name="user_id"/>
-    </search>
-    </field>
-</record>
-```
+## 向导
 
-### 继承
-* 使用inherit_id引用父视图
-* arch节点后指定要增加视图的锚点
+### 功能
+* 类似于弹窗，用于接收用户输入，然后进行相应处理
 
-```xml
-<record model="ir.ui.view" id="bug-manage.follower_form">
-    <field name="name">follower</field>
-    <field name="model">res.partner</field>
-    <field name="inherit_id" ref="base.view_partner_form"/>
-    <field name="arch" type="xml">
-    <!-- 扩展锚点 -->
-    <field name="mobile" position="after">
-        <field name="bug_ids"/>
-    </field>
-    </field>
-</record>
-```
+### 模型
+* 基类为models.TransientModel
+* 不能使用one2Many关系（导致模型无法被清理）
+* 记录不是永久的，一段时间后会被自动删除
+* 不需要访问权限，用户有向导记录的所有权限
 
 
-## 业务逻辑
+### 视图
+* 一般是form视图
+* <footer> 用于放置动作按键
 
-### 创建
-* 可以使用模型类中的方法来实现
-* 方法来用@api.multi来装饰
+
 
 
 ## 安全性
@@ -257,7 +379,10 @@ class Bug(models.Model):
 * perm 对应的权限（read, write, create, unlink）
 
 
-## 网页
+
+
+
+## 前端网页
 
 ### 概述
 * 网页由控制器进行转发
@@ -278,3 +403,199 @@ class Bug(http.Controller):
         bugs_open=bugs.search(domain_bug)
         return http.request.render('bug-manage.bugs_template',{'bugs_open':bugs_open})
 ```
+
+
+
+
+## 后端视图
+
+### 概述
+* 视图通过xml文件定义
+* 文件放置于views目录下
+* 所有视图信息都会保存在数据库中
+
+#### 通用定义结构
+* 使用 <record> 元素，定义数据库表中的一条记录
+    * name 指定要存储的表
+    * id 记录的唯一标识
+
+#### 通用属性
+* 使用 <field> 元素定义
+* name 视图名字
+* model 关联的模型名字
+* priority 视图优先级，值小的被先返回
+* arch 视图布局
+* groups_id 可查看、使用视图的用户组
+* inherit_id 父视图
+
+#### 类型
+* 菜单视图：用于把 数据模型 -- 菜单 -- 视图 连接起来
+* 表单视图：用于创建、编辑数据模型
+* 列表视图：用于展示数据模型
+* 搜索视图：用于对数据模型进行搜索和过滤
+* 图形视图：以图表形式呈现模型中的数据
+
+
+### 继承
+* 使用inherit_id引用父视图
+* arch节点后指定要增加视图的锚点
+
+```xml
+<record model="ir.ui.view" id="bug-manage.follower_form">
+    <field name="name">follower</field>
+    <field name="model">res.partner</field>
+    <field name="inherit_id" ref="base.view_partner_form"/>
+    <field name="arch" type="xml">
+    <!-- 扩展锚点 -->
+    <field name="mobile" position="after">
+        <field name="bug_ids"/>
+    </field>
+    </field>
+</record>
+```
+
+
+
+### 菜单视图
+* 使用 act_window 和 menuitem 实现
+
+#### 菜单项
+* 使用 <menuitem> 定义
+
+##### 属性
+* name 前端界面显示
+* id 唯一标识
+* parent 指定父菜单
+* action 指定窗口动作
+
+##### 例子
+```xml
+<menuitem name="bug管理系统" id="bug-manage.menu_root"/>
+
+<menuitem name="bug管理" id="bug-manage.menu_1" parent="bug-manage.menu_root"/>
+
+<menuitem name="bug列表" id="bug-manage.menu_1_list" parent="bug-manage.menu_1"
+              action="bug-manage.action_window"/>
+```
+
+#### 窗口动作
+* 使用 <act_window> 定义
+* 告知界面要使用什么模型，提供哪些视图
+
+##### 属性
+* id 唯一标识，名字中最多只能有一个点
+* res_model 要显示的模型
+* view_mode 视图类型
+* target 视图显示的位置
+    * new 在对话框中显示
+    * current 在主内容区域显示
+* domain 域表达式，用于过滤记录
+
+##### 例子
+```xml
+<act_window id="bug-manage.action_window"
+    name = "bug-manage window"
+    res_model = "bm.bug"
+    view_model = "tree,form"
+/>
+```
+
+
+### 表单视图
+* 使用 <form> 定义
+* 分成三部分：头部、主体、联系
+
+##### 头部
+* 包含文档的生命周期、步骤、相关的操作按键
+* 生命周期表示：文档在当前所在的生命周期中的点
+    * 使用State(状态)字段、Stage(阶段)字段
+
+##### 主体
+* 放置表单的数据元素
+* 位于<sheet>节点内
+* 组成区域
+    * 标题、副标题（一般在左上角）
+    * 按键框（一般在右上角）
+    * 区域字段
+    * 笔记本（一般在底部）
+
+
+
+### 看板视图
+* 使用 <kanban> 定义
+* 主要使用html元素构成
+
+#### 用途
+* 用于展示简单的业务流程
+* 将不同节点的工作放在不同的列上
+
+#### 子元素
+##### field
+* 定义用来集合计算的字段、用在视图逻辑中的字段
+    * name 字段名
+    * sum, avg, min, max, count 计算方式，只能选一个
+
+##### templates
+* 定义一个QWeb模板列表
+* 卡片可以分割成多个模板，至少要定义一个kanban-box标签
+* 使用的是客户端QWeb
+
+
+
+
+### 列表视图
+* 使用 <tree> 定义
+
+#### 属性
+* default_order 默认排序，格式："field-name,field-name desc"
+
+#### 子元素
+* field 定义要显示的字段
+
+```xml
+<tree>
+    <field name="name"/>
+    <field name="is_closed"/>
+    <field name="user_id"/>
+</tree>
+```
+
+
+### 搜索视图
+* 使用 <search> 定义
+* 右上角会显示一个搜索框
+
+#### 子元素
+* field 定义要显示的字段
+* filter 定义过滤条件
+
+```xml
+<search>
+    <field name="name"/>
+    <field name="is_closed"/>
+    <field name="user_id"/>
+</search>
+```
+
+### 图形视图
+* 使用 <graph> 定义
+
+#### 属性
+* type 图形类型：bar, pie, line
+* stacked true表示使用堆积形式
+
+
+## 报表 
+
+
+
+## QWeb
+
+### 概述
+* 一个基于XML的模板引擎
+* 可生成HTML片段和页面
+* 指令是标签内以‘t-’开头的属性
+
+### 表达式处理
+* 客户端JavaScript：看板视图
+* 服务器Python：用于报表、页面
