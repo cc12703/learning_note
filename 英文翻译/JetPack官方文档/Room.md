@@ -285,3 +285,172 @@ interface UserDao {
 * 如果需要复杂的插入、更新、删除操作，就需要使用查询方法来实现
 
 #### 插入
+* @Insert标注允许你定义方法，来将参数插入到对应的数据库表中
+* 方法参数必须是Room数据实体的实例、是包含了实体实例的集合
+* 当方法参数是一个对象时，会返回一个long值，是插入数据项的rowID
+* 当方法参数是一个集合、列表时，会返回一个long值的集合，内容是rowID
+
+```kotlin
+@Dao
+interface UserDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertUsers(vararg users: User)
+
+    @Insert
+    fun insertBothUsers(user1: User, user2: User)
+
+    @Insert
+    fun insertUsersAndFriends(user: User, friends: List<User>)
+}
+```
+
+#### 更新
+* @Update标注允许你定义方法，来更新数据库表中的指定行
+* 方法参数必须是数据实体的实例
+* Room使用主键去查找传入实体在数据库中所在的行。如果查找不到，则不会更新
+* 方法可以选择返回一个int值，表明更新成功的行数
+
+```kotlin
+@Dao
+interface UserDao {
+    @Update
+    fun updateUsers(vararg users: User)
+}
+```
+
+#### 删除
+* @Delete标注允许你定义方法，来删除数据库表中的指定行
+* 方法参数必须是数据实体的实例
+* Room使用主键去查找传入实体在数据库中所在的行。如果查找不到，则不会更新
+* 方法可以选择返回一个int值，表明更新成功的行
+
+```kotlin
+@Dao
+interface UserDao {
+    @Delete
+    fun deleteUsers(vararg users: User)
+}
+```
+
+
+
+### 查询方法
+#### 概述
+* @Query标注允许你写SQL语句并将其导出为DAO方法
+* 使用查询方法可以用于从数据库中查询数据、执行复杂的插入、更新、删除操作
+* Room在编译阶段验证SQL查询语句
+
+#### 简单查询
+```kotlin
+//返回所有的User对象
+@Query("SELECT * FROM user")
+fun loadAllUsers(): Array<User>
+```
+
+#### 返回部分列的子集合
+* 大部分时候，我们只想查询一部分数据表中的列
+* Room允许你从任何查询中返回一个简单对象。只要你能将结果列映射到对象中
+
+```kotlin
+//Room会将first_name, last_name列的值，映射到NameTuple的对应字段上
+data class NameTuple(
+    @ColumnInfo(name = "first_name") val firstName: String?,
+    @ColumnInfo(name = "last_name") val lastName: String?
+)
+
+@Query("SELECT first_name, last_name FROM user")
+fun loadFullName(): List<NameTuple>
+```
+
+#### 传入简单参数
+* 大部分时候，DAO方法需要接收参数用于执行过滤操作
+* Room支持将方法参数绑定到查询语句中
+
+```kotlin
+//参数minAge会替换掉语句中的 :minAge
+@Query("SELECT * FROM user WHERE age > :minAge")
+fun loadAllUsersOlderThan(minAge: Int): Array<User>
+
+@Query("SELECT * FROM user WHERE age BETWEEN :minAge AND :maxAge")
+fun loadAllUsersBetweenAges(minAge: Int, maxAge: Int): Array<User>
+
+@Query("SELECT * FROM user WHERE first_name LIKE :search " +
+       "OR last_name LIKE :search")
+fun findUserWithName(search: String): List<User>
+```
+
+#### 传入集合参数
+* 有时候，DAO方法需要你传入一个可变数量的参数，具体值要到运行时才知道
+* 当参数是一个集合时，Room在运行时，会根据提供的参数数量自动展开它们
+
+```kotlin
+@Query("SELECT * FROM user WHERE region IN (:regions)")
+fun loadUsersFromRegions(regions: List<String>): List<User>
+```
+
+#### 查询多张表
+* 有时候，你需要读取多张表来计算结果
+* 你可以在SQL查询语句中使用JOIN子句来引用多张表
+* 你也可以定义一个简单对象来返回合并表中的部分列
+
+
+```kotlin
+@Query(
+    "SELECT * FROM book " +
+    "INNER JOIN loan ON loan.book_id = book.id " +
+    "INNER JOIN user ON user.id = loan.user_id " +
+    "WHERE user.name LIKE :userName"
+)
+fun findBooksBorrowedByNameSync(userName: String): List<Book>
+
+
+
+interface UserBookDao {
+    @Query(
+        "SELECT user.name AS userName, book.name AS bookName " +
+        "FROM user, book " +
+        "WHERE user.id = book.user_id"
+    )
+    fun loadUserAndBookNames(): LiveData<List<UserBook>>
+
+    data class UserBook(val userName: String?, val bookName: String?)
+}
+```
+
+
+### 指定返回类型
+#### 带分页的查询
+* Room通过整合Paging库，可以支持带分页的查询
+* DAO会返回PagingSource对象
+
+```kotlin
+@Dao
+interface UserDao {
+  @Query("SELECT * FROM users WHERE label LIKE :query")
+  fun pagingSource(query: String): PagingSource<Int, User>
+}
+```
+
+#### 直接游标访问
+* 如果应用逻辑要求直接访问并返回行，可以让DAO方法返回一个Cursor对象
+
+```kotlin
+@Dao
+interface UserDao {
+    @Query("SELECT * FROM user WHERE age > :minAge LIMIT 5")
+    fun loadRawUsersOlderThan(minAge: Int): Cursor
+}
+```
+
+
+
+
+## 定义对象间关系
+
+### 概述
+* 因为SQLite是一个关系性数据库，你可以指定数据实体之间的关系
+* 尽管大部分ORM库都运行实体对象引用其他实体对象，但是Room明确禁止这么做
+
+
+### 创建内嵌对象
+
