@@ -22,11 +22,12 @@
 
 ### 文件结构
 > /root/
-    /controllers/
-    /models/
-    /views/ -- 视图配置
+    /controllers/ -- 控制器（HTTP路由）
+    /models/ -- 模型定义
+    /views/ -- 视图和模板
     /demo/  -- 演示数据
-    /security/ -- 安全控制
+    /security/ -- 安全配置
+    /report/  -- 报表和模型
     /\_\_manifest\_\_.py -- 模块元数据
 
 
