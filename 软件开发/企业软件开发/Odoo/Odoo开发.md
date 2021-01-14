@@ -20,17 +20,6 @@
 
 ## 模块
 
-### 文件结构
-> /root/
-    /controllers/ -- 控制器（HTTP路由）
-    /models/ -- 模型定义
-    /views/ -- 视图和模板
-    /demo/  -- 演示数据
-    /security/ -- 安全配置
-    /report/  -- 报表和模型
-    /\_\_manifest\_\_.py -- 模块元数据
-
-
 ### manifest配置
 * name 模块名
 * summary 模块简介
@@ -869,6 +858,100 @@ class Bug(http.Controller):
 
 
 
+## 权限安全
+
+### 概述
+* 访问权限通过**安全组**进行配置： 给组指定权限，然后为组分配用户
+* 定义文件都在security目录下
+
+### 权限层级
+#### 菜单、报表
+* 功能：限制菜单项、报表的可见性
+
+#### 模型
+* 功能：设置对模型对象的增、删、读、写权限
+
+#### 记录
+* 功能：限制对特定记录的访问
+* 例子：业务员只能访问自己创建的客户信息，经理可以访问所有的客户信息
+
+#### 字段
+* 功能：限制对特定字段的访问
+* 例子：产品的成本字段只有经理有读权限
+
+
+
+### 添加权限
+#### 创建权限分类
+* 使用\<record\>标签，添加到ir.module.category模型中
+* 用于将多个安全组分类
+* name 名字
+* description 描述信息
+
+#### 创建安全组
+* 使用\<record\>标签，添加到res.groups模型中
+* name 组的显示名称
+* category_id 引用应用分类，用于在用户表单中组织分组
+* implied_ids 继承其他组的权限
+* users 属于该组的用户
+* menu_access 指定能访问的菜单项
+* view_access 指定能访问的界面视图
+* model_access 指定能访问的模型
+* rule_groups 指定使用的的访问规则
+
+##### 特点
+* 属于一个安全组的用户，会自动属于其所继承的组（父安全组）
+* 安全组所授予的权限是累加的
+
+#### 模型权限
+* 定义在ir.model.access.csv文件，已访问控制列表（ACL）的形式
+* ACL会存储在ir.model.access模型中
+* id 记录的唯一标识，命名规则：access_\<model\>_\<group\>
+* name 规则名字，有唯一性，命名规则：access.\<model\>.\<group\>
+* model_id:id  要设置的模型ID,  命名规则：model_\<name\>
+* group_id:id  要设属于的用户组ID, 若留空则属于所有用户
+* perm_xxx 对应的权限, 1为有权限，0为无权限（read, write, create, unlink）
+
+#### 限制字段访问
+* 通过在定义模型字段时，设置groups属性
+* 作用：只有用户属于该安全组，才能访问该字段
+
+```python
+is_public =fields.Boolean(groups='my_library.group_library_librarian')
+private_notes =fields.Text(groups='my_library.group_library_librarian')
+```
+
+#### 限制记录访问
+* 使用\<record\>标签，添加到ir.rule模型中
+* 一般该配置放置在\<odoo noupdate="1"\>区域内（模块升级时不会重新加载）
+* name  规则描述性说明
+* model_id 规则应用的模型
+* groups 规则所属于的安全组，若无则视为全局
+* domain_force  用于过滤记录的域表达式
+
+
+##### 常用域表达式
+* ('user_id','=',user.id) 获取该用户自己的记录
+* (1,'=',1)  不限制
+
+
+#### 限制菜单报表的访问
+* 通过menu标签、report标签的groups属性
+
+
+### 配置语法
+* ref 根据module_name.xml_id返回数据库ID
+* eval 将值作为python代码进行求值
+
+#### eval解析
+* (4,ID) 添加主从链接关系到ID对象
+* (3,ID) 去除ID对象的主从链接关系，不删除该对象
+* (2,ID) 去除ID对象的主从链接关系，并且删除该对象
+* (5) 去除所有链接关系
+* (6,0,[IDs]) 用于IDs中的记录替换原来链接中的记录
+
+
+
 ## 其他功能
 
 
@@ -1012,16 +1095,3 @@ return {
 * <footer> 用于放置动作按键
 
 
-
-### 安全性
-#### 访问控制
-##### 概述
-* 在security目录下创建ir.model.access.csv文件
-* 系统启动时会将数据写入ir.model.access模型中
-
-##### 字段
-* id 记录的唯一标识
-* name 记录名字，有唯一性，格式：<模块名>.<安全组名>
-* model_id 设置访问权限的模块ID
-* group_id 要授予权限的安全组的ID
-* perm 对应的权限（read, write, create, unlink）
