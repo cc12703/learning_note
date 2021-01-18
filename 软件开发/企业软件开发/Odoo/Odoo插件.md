@@ -6,7 +6,8 @@
 
 ## 分类
 * base  基础
-* product 定义产品相关信息
+* product 产品信息
+* purchase 采购
 * sale   销售
 * sale_management
 * sale_purchase
@@ -24,10 +25,10 @@
 * type 类型
 * categ_id  分类信息，指向product.category
 
-* price 产品价格
-* list_price 销售价格
-* 1st_price 公开价格
-* standard_price 成本价格
+* price 最终销售价格，计算字段，基础是list_price
+* list_price 基准价格
+* 1st_price 公开价格，和list_price等价
+* standard_price 采购是的成本价格（用于标准计价法）
 
 * sale_ok 是否用于销售
 * purchase_ok 是否用于采购
@@ -42,6 +43,51 @@
 * service_type 服务类型
 * sales_count 销售数量
 * invoice_policy 开票策略
+
+
+
+### product.product 产品
+#### product 定义
+* 继承了product.template
+
+
+
+
+### sale.order 销售订单
+#### sale 定义
+* name 名字
+* origin 原始文档
+* state 状态
+
+* user_id 销售人员，指向res.users
+* partner_id 顾客， 指向res.partner 
+
+* order_line 订单内容， 指向sale.order.line
+
+
+### sale.order.line 销售订单内容
+* order_id 订单ID
+* name 名字
+
+* product_id 产品ID，指向product.product
+
+
+### purchase.order 采购订单
+#### purchase 定义
+* name 名字
+* state 状态
+
+* partner_id 制造商，指向res.partner
+
+* order_line 订单内容，指向purchase.order.line
+
+
+### purchase.order.line 采购订单内容
+#### purchase 定义
+* order_id 订单ID
+* name 名字
+
+* product_id 产品ID，指向product.product
 
 
 ### res.partner 联系人
