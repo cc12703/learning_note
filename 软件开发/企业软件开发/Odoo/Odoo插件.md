@@ -6,11 +6,12 @@
 
 ## 分类
 * base  基础
+* portal  门户
 * product 产品信息
 * purchase 采购
 * sale   销售
-* sale_management
-* sale_purchase
+    * sale_management
+    * sale_purchase
 
 
 
@@ -126,3 +127,25 @@
 
 * company_id 关联res.company，多对一
 * company_ids 关联res.company, 多对多
+
+
+
+## 逻辑
+
+### portal
+#### 登录主页面
+* 路由：xxx/my 或 xxx/my/home (controllers/portal.py)
+* 显示模板：portal_my_home (views/portal_templates.xml)
+
+##### 基础结构
+1. 通用元素，调用portal_layout
+2. 文档区域 class为 o_portal_my_home
+    1. 文本 Documents
+    1. 列表项 class为 o_portal_docs
+
+##### 继承结构
+sale插件会继承该模板，增文档列表项
+
+* 模板： portal_my_home_sale （views/sale_portal_templates.xml）
+* 扩展点：o_portal_docs 内部
+* 扩展方式：使用portal.portal_docs_entry 增加列表项（报价单，销售订单）
