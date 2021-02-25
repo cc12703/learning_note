@@ -245,21 +245,6 @@ fun bindData(bean: ContentBean) {
 }
 ```
 
-### 操作符重载
-| 表示式      |     函数 |  
-| :--- | :---:|
-| +a   |  a.unaryPlus() |  
-| !a  |  a.not()  |
-|  a++  |  a.inc() 返回值是a  |
-| ++a   |  a.inc() 返回值是 a+1 |
-| a in b |  b.contains(a)  |
-| a !in b | !b.contains(a)  |
-| a[i]  |  a.get(i)  |
-| a[i] = b |  a.set(i, b)  |
-| a()   |   a.invoke() |
-| a(i)  |   a.invoke(i)  |
-| a > b  |  a.compareTo(b)  > 0 | 
-
 
 ### 异常
 * throw 和 try 都可以作为一个表达式
@@ -654,25 +639,256 @@ var stu: Student? = getStu() as Student?
 ```
 
 ### 根类型Any
-* Any运行时会自动映射成java.lang.Object
-* 只有 equals(), hashCode(), toString() 三个方法
+* Any 是非空类型的根类型
+* Any 运行时会自动映射成Object
+* Any? 是所有类型的根类型
+
+#### 继承vs子类型化
+* 继承属于一种 实现上的复用
+* 子类型化属于一种 类型语义的关系，与实现无关
 
 
-### Unit类型
-* 表示一个函数没有返回值。和java的void功能一样
-* 其表达式计算结果的返回类型是Unit
+### Nothing
+* 是类型层次中最底层的类型
+* 是没有实例的类型
+* 该类型的表达式不会产生任何值
+* 该类型只能包含一个值：null
 
-### Nothing类型
-* 表示没有实例的类型
-* 其表达式计算结果是永远不会返回的
-* 类型层次：Nothing  --> Unit  -->  Any
+
+## 扩展
+
+### 多态
+* 子类型多态：子类继承父类
+* 参数多态：泛型
+* 特设多态：扩展、操作符重载
+	* 理解：一个多态函数有多种不同的实现，依赖于其实参而调用相应版本的函数
+
+### 操作符重载
+* 使用operator关键字
+	* 作用：将一个函数标记为重载一个操作符
+* 函数名是Kotlin规定的
+
+```kotlin
+data class Area(val value: Double)
+
+operator fun Area.plus(that: Area): Area {
+	return Area(this.value + that.value)
+}
+
+fun main() {
+	Area(1.0) + Area(2.0)
+}
+```
+
+#### 重载函数名
+| 表示式   |  函数 |  
+| :--- | :---:|
+| a + b |  a.plus(b)  |
+| a - b | a.minus(b) |
+| a * b | a.times(b) |
+| +a   |  a.unaryPlus() |  
+| !a  |  a.not()  |
+|  a++  |  a.inc() 返回值是a  |
+| ++a   |  a.inc() 返回值是 a+1 |
+| a in b |  b.contains(a)  |
+| a !in b | !b.contains(a)  |
+| a[i]  |  a.get(i)  |
+| a[i] = b |  a.set(i, b)  |
+| a()   |   a.invoke() |
+| a(i)  |   a.invoke(i)  |
+| a > b  |  a.compareTo(b)  > 0 | 
+
+
+### 实现
+#### 扩展函数
+* 使用\<Type\>关键字
+* 需要指定一个 **接收者类型**
+* 函数中使用this来表示**接收者类型的对象**
+* 底层实现：Java中的静态方法
+
+```kotlin
+fun MutableList<Int>.exchange(fronIndex: Int，toIndex: Int) {
+	...
+}
+```
+
+#### 扩展属性
+```kotlin
+val MutableList<Int>.sumIsEven: Boolean
+	get() = this.sum() % 2 == 0
+
+//使用
+val list = mutableListOf(2,2,4)
+list.sumIsEven
+```
+
+#### 特殊情况
+* 若要声明一个静态的扩展函数，必须要定义在伴生对象上
+* 函数名相同时，成员方法优先级高于扩展函数
+
+
+### 标准库扩展函数
+#### apply
+* 返回操作对象
+
+##### 定义
+```kotlin
+fun <T> T.apply(block: T.() -> Unit): T {
+	block()
+	return this
+}
+```
+
+##### 例子
+```kotlin
+bean.apply { 
+	titleTV.text = this.title 
+}
+```
+
+#### let
+* 返回运算结果
+
+##### 定义
+```kotlin
+fun <T,R> T.let(block: (T) -> R): R {
+	return block(this)
+}
+```
+
+##### 例子
+```kotlin
+val result = student?.let { 
+	println(this.age)
+	it.age
+}
+```
+
+#### run
+* 返回运算结果
+
+##### 定义
+```kotlin
+fun <T,R> T.let(block: (T) -> R): R {
+	return block()
+}
+```
+
+##### 例子
+```kotlin
+run {
+	if(!isLogin) loginDialog else getNewAccountDialog
+}.show()
+```
+
+#### also
+##### 定义
+```kotlin
+fun <T> T.apply(block: T.() -> Unit): T {
+	block(this)
+	return this
+}
+```
+
+##### 例子
+```kotlin
+val result = student?.let { stu ->
+	println(stu.age)
+	stu.age
+}
+```
+
+#### takeIf
+* 当接收器满足指定条件时，才会执行
+
+##### 定义
+```kotlin
+fun <T> T.takeIf(predicate: (T) -> Boolean): T? {
+	return if(predicate(this)) this else null
+}
+```
+
+##### 例子
+```kotlin
+student.takeIf { it.age >= 18 }.let { ... }
+```
 
 
 ## 元编程
 
+### 定义
+* 程序即数据，数据即程序
+* 程序即数据：访问描述程序的数据，即通过反射获取类型信息
+* 数据即程序：将数据转化成对应的程序，即代码生成
+
+### 实现方案
+* 反射：运行时通过API暴露程序信息
+* 动态执行：运行是动态将文本作为代码执行
+* 语法糖：通过外部程序（编译器）操作AST实现
+
 
 
 ## 协程
+
+### 特点
+* 协程工作在线程之上
+* 协程的切换可以由程序自己来控制
+
+### 接口
+* delay 用于挂起协程，不会阻塞线程
+* launch 启动一个协程
+* runBlocking 启动一个主协程，会阻塞当前线程
+
+```kotlin
+fun main() = runBlocking { 
+	launch {
+		delay(1000L)
+		println("")
+	}
+	println("")
+	delay(2000L)
+}
+```
+
+### 等待
+* join() 非阻塞式的等待指定的协程结果
+* suspend：该关键字修饰的方法内部还可以调用其他的suspend方法
+
+```kotlin
+suspend fun search() {
+	delay(1000L)
+	println("")
+}
+
+fun main() = runBlocking { 
+	val job = launch { 
+		search()
+	}
+	println("")
+	job.join()
+}
+```
+
+### 并行
+* async 创建一个子协程，该协程并行运行。返回一个Deferred对象
+* await() 等待协程运行完成，并获取协程返回的结果
+
+```kotlin
+suspend fun searchItemOne(): String {
+	delay(1000L)
+	return "..."
+}
+suspend fun searchItemTwo(): String {
+	delay(1000L)
+	return "..."
+}
+
+fun main() = runBlocking { 
+	val one = async { searchItemOne() }
+	val two = async { searchItemTwo() }
+	println("The item is ${one.await()} and ${two.await()}")
+}
+```
 
 
 
