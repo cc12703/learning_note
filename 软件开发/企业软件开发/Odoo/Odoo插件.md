@@ -52,7 +52,22 @@
 * company_ids 关联res.company, 多对多
 
 
+
 ## 核心功能 -- 进销存
+
+### 数据库表
+* stock_location 库位
+* stock_picking 分拣单（出库、入库、内部移动）
+* stock_move 移动记录表，每次分拣就会触发一次移动
+* stock_quant 商品库存表，存放商品数量
+* stock_inventory 库存盘点
+* stock_inventory_line 库存盘点明细
+* stock_production_lot 序列号（产品批次）
+
+* procurement_rule 补货规则
+* procurement_order 补货单
+
+
 
 ### 模型
 #### product.template 产品模板 
@@ -127,6 +142,10 @@
 * name 名字
 
 * product_id 产品ID，指向product.product
+
+
+#### stock.inventory 仓库库存
+
 
 
 
