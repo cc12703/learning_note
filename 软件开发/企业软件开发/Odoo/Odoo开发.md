@@ -88,7 +88,10 @@ class Bug(models.Model):
 
 ### 字段
 #### 常规字段
-* 字符串：fields.Char, fields.Text
+* 字符型：fields.Char
+* 文本型：fields.Text
+    * 用于多行文本框
+    * 用widget属性添加样式
 * 整型：fields.Integer
 * 布尔型：fields.Boolean
 * 浮点型：fields.Float 
@@ -96,16 +99,10 @@ class Bug(models.Model):
 * 下拉列表框：fields.Selection(items, string)
     * items 选项列表
     * string 前端显示名
+* 二进制类型：fields.Binary
+    * 在视图层显示为一个文件上传按键
+    * 最多保存20M
 
-#### 字段属性
-* string 前端界面显示的字段名称
-* default 默认值
-* required true表示不能为空
-* help 前端界面显示的提示信息
-* index true表示会创建索引
-* readonly true表示前端界面不可编辑
-* groups 限定可访问的安全组
-* states 通过字典来设置界面相关的属性
 
 #### 保留字段
 * id 记录的唯一标识
@@ -126,9 +123,35 @@ discovers = fields.Reference(
 )
 ```
 
-##### 计算字段
+##### 实时计算字段
 * 可以根据函数自动计算出值
-* 使用了computes属性来指定函数
+* 默认时该字段不保存到数据库，通过store=True可以强制保存
+
+```python
+total = fields.Float(compute='_compute_total')
+
+@api.depends('value', 'tax')
+def _compute_total(self):
+    for record in self:
+        record.total = record.value + record.value * record.tax
+```
+
+### 字段属性
+#### 总体
+* string 前端界面显示的字段名称
+* default 默认值
+* required true表示不能为空
+* help 前端界面显示的提示信息
+* index true表示会创建索引
+* readonly true表示前端界面不可编辑
+* groups 限定可访问的安全组
+* states 通过字典来设置界面相关的属性
+
+##### 实时计算
+* 用compute属性指定函数
+* 该函数用depends声明
+* 用inverse属性指定修改函数
+
 
 
 ### 类型
