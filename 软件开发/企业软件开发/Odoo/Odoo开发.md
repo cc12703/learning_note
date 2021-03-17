@@ -235,7 +235,6 @@ def _compute_total(self):
 
 
 
-
 ### 层级结构
 * 用于处理同一个模型的数据记录之间的关系
 
@@ -270,11 +269,6 @@ def _compute_total(self):
 
 
 ### 内置方法
-#### 写入操作
-* <model>.create(vals) 创建新记录
-* <recordset>.write(vals)  更新记录
-* <recordset>.unlink()    删除记录
-
 #### RPC网页端
 * read(fields) 读取记录，只包含指定字段，记录是字典形式
 * searc_read() 在结果记录集上执行查找操作
@@ -285,26 +279,39 @@ def _compute_total(self):
 
 
 ### 其他接口
-#### 获取服务器环境
-* self.env 获取当前用户的运行环境
-* env.uid 当前会话中用户的ID
-* env.contenxt 当前会话的上下文信息
-* env[model.name] 获取指定模型的引用
-* env.sudo(user)  获取指定用户的环境信息
-* env.ref(extID)  使用外部ID获取记录
-
-
-### 操作记录集
-#### 查询
-* search()  使用domain表达式获取记录
-* search_count() 获取指定条件的记录数量
-* browse()
-
 #### 日期时间
 * Datetime.now() 返回当前datetime的字符串
 * Date.today()   返回当前日期的字符串
 * rom_string(val) 将字符串转换为date,datetime对象
 * to_string(val)  将date,datetime对象转换为字符串
+
+
+### 操作记录集
+#### 基本
+* model.create(vals) 
+    * 使用vals创建一条新记录
+    * vals格式：{'field_name': field_value, ...}
+* recordset.write(vals) 
+    * 使用vals更新集合中的所有记录
+    * vals格式：{'field_name': field_value, ...}
+* recordset.unlink() 
+    * 删除当前集合中的所有记录
+* recordset.exists()  
+    * 过滤出确实存在的记录
+* model.browse(ids)
+    * 返回指定ID的记录
+    * ids 为单个或多个ID
+
+#### 查询
+* search(args, offset, limit, order) 
+    * 搜索记录
+    * args 为domain表达式
+    * offset 为开始搜索的记录
+    * limit 为返回记录的最大个数
+    * order 为排序的字段
+* search_count(args) 
+    * 查询记录数量
+    * args 为domain表达式
 
 
 #### 记录集
@@ -316,13 +323,58 @@ def _compute_total(self):
 * recordset.sorted(func)   排序记录集
 
 
-### context
-* 用于存储会话数据，按字典格式存放数据
-* 用于前端ORM和后端ORM中
+### 多对应字段操作
+* 指：One2many和Many2many
+* 使用一个三元组进行操作
+* (0, 0, values) 
+    * 使用values参数增加一条新记录
+    * values格式：{'field_name': field_value, ...}
+* (1, id, values)
+    * 使用values参数更新指定ID的记录
+    * values格式：{'field_name': field_value, ...}
+* (2, id, 0)
+    * 将指定ID的记录从记录集中移除，并从数据库中删除
+* (3, id, 0)
+    * 将指定ID的记录从记录集中移除，但不从数据库中删除
+* (4, id, 0)
+    * 将指定ID的记录加入数据集中
+* (5, 0, 0)
+    * 删除记录集中的所有记录，但不从数据库中删除
+* (6, 0, ids)
+    * 替换记录集中所有和ids匹配的记录
+    * 先执行5，在循环执行4
 
-#### 用途
-* 前端：将信息从一个视图传递到下一个视图
-* 后端：提供本地设置和信号信息
+
+### 环境 Environment
+#### 概述
+* 环境用于保存一些ORM库所使用的上下文数据
+* 包括：数据库游标(cr)、当前用户(user)、当前上下文(context)
+* 所有的记录集有一个不可变的环境，使用env来获取
+
+#### 基本
+* self.env 获取当前用户的运行环境
+* env.uid 当前会话中用户的ID
+* env.contenxt 当前会话的上下文信息
+* env[model.name] 获取指定模型的引用
+* env.ref(extID)  使用外部ID获取记录
+
+#### 改变环境
+* model.with_user(user)
+    * 返回指定用户的记录集
+    * 默认用户为SUPERUSER
+* model.with_context(context, overrides)
+    * 返回当前记录集在扩展环境下的记录集
+    * 扩展环境由指定环境和overrides合并而成
+    * context 用于指定环境，{}为空环境，默认为当前环境
+* model.with_env(env)
+    * 返回指定环境下的记录集
+* model.sudo(flag)
+    * 返回超级用户模式下的记录集
+    * flag默认为true
+    * 超级用户模式不会改变当前用户，只是简单的忽略权限的检查
+
+
+
 
 ### domain
 * 用于筛选数据记录
@@ -330,7 +382,7 @@ def _compute_total(self):
 
 #### 表达式语法
 * 是一个条件列表
-* 每个条件是一个元组：('<field-name>', '<operator>', '<value>')
+* 每个条件是一个元组：('\<field-name\>', '\<operator\>', '\<value\>')
 * 多个条件默认是 “与” 的关系，要满足所有条件
 
 ##### operator值
@@ -977,6 +1029,27 @@ private_notes =fields.Text(groups='my_library.group_library_librarian')
 
 ## 其他功能
 
+
+### 钩子函数
+#### 概述
+* 在安装模块、卸载模块时触发一些操作
+
+#### 类型
+* pre_init_hook : 在安装模块前执行
+* post_init_hook : 在安装完模块后执行
+* uninstall_hook : 在卸载完模块后执行
+* post_load : 在加载完模块后执行
+
+#### 定义
+* 在__mainfest__.py中定义
+```json
+{
+    'pre_init_hook'：'test_pre_init_hook'，
+    'post_init_hook'：'test_post_init_hook'，
+    'uninstall_hook'：'test_uninstall_hook'，
+    'post_load'：'test_post_load'，
+}
+```
 
 ### 动作Action
 #### 概述
