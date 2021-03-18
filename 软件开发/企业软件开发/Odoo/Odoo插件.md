@@ -13,6 +13,8 @@
 * purchase 采购
 * sale   销售
 * stock 库存
+    * purchase_stock 采购相关
+    * sale_stock 销售相关
 
 ## base
 * 定义基础业务模型：res_xxx
@@ -157,6 +159,10 @@
         * sale_stock   关联销售和库存
         * purchase_stock 关联采购和库存
 
+### 规则数据
+* 在stock.location.rule中生成一条记录 route_drop_shipping
+* 在stock.rule表中为每家公司生成一条记录
+
 
 ### sale_purchase
 * 增加SO和PO之间的关联
@@ -205,3 +211,39 @@ sale插件会继承该模板，增文档列表项
 * 模板： portal_my_home_sale （views/sale_portal_templates.xml）
 * 扩展点：o_portal_docs 内部
 * 扩展方式：使用portal.portal_docs_entry 增加列表项（报价单，销售订单）
+
+
+
+## 仓库
+
+### 规则逻辑
+#### 订单行启动规则  
+* 位置：sale-stock:SaleOrderLine->_action_launch_stock_rule()
+* 逻辑：
+    1. 生成需求组ID
+    1. 生成需求信息
+    1. 运行规则选择
+
+#### 规则选择
+* 位置：stock:ProcurementGroup->run()
+* 逻辑：
+    1. 生成查询domain _get_rule_domin()
+    1. 查找规则 _search_rule
+    1. 获取到规则对应的动作 action
+    1. 调用StockRule类的_run_\<action\>方法
+
+#### 触发动作
+* 移库：stock:StockRule._run_poll()
+* 采购：purchase_stock:StockRule._run_buy()
+* 制造：mrp:StockRule._run_manufacture()    
+
+
+#### 生成采购单
+* 位置：purchase_stock:StockRule._run_buy()
+* 逻辑：
+    1. 确定供应商 supplier
+        * 通过product的_select_seller(),_prepare_sellers()确定
+    1. 生成采购单 
+        * 通过_prepare_purchase_order()生成数据
+    1. 生成采购单行
+        * 通过PurchaseOrderLilne._prepare_purchase_order()生成数据
