@@ -526,10 +526,15 @@ class Bug(http.Controller):
 * after 扩展内容添加在匹配节点之后
 * before 扩展内容添加在匹配节点之前
 * inside 扩展内容添加在匹配节点内部（默认值）
-* repalce 扩展内容替换掉匹配节点
+* repalce 扩展内容替换掉匹配节
+* attributes 替换节点中的属性
+    ```xml
+    <xpath expr="//field[@name='name']" position="attributes">
+          <attribute name="required">1</attribute>
+    </xpath>
+    ```
 
 #### 例子
-
 ```xml
 <record model="ir.ui.view" id="bug-manage.follower_form">
     <field name="name">follower</field>
