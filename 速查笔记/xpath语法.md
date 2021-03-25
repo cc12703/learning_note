@@ -25,7 +25,7 @@
 * /bookstore/book[last()] 选取bookstore子节点的最后一个book节点
 * //title[@lang]     选取所有拥有lang属性的title节点
 * //title[@lang='eng']     选取所有lang属性值为eng的title节点
-* /bookstore/book[price>35.00]/title  选取bookstore节点中book节点下的所有title节点, 并且price属性的值必须大于35.00
+* /bookstore/book[price>35.00]/title  选取bookstore节点中book节点下的所有title节点, 并且price元素的值必须大于35.00
 * /bookstore/*      选取bookstore节点下的所有子节点
 * **//***          选取文档中的所有元素
 * **.//***        选取当前节点所包含的所有元素
