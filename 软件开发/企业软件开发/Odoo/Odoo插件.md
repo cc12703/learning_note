@@ -58,6 +58,7 @@
 ## 核心功能 -- 进销存
 
 ### 数据库表
+* stock_warehouse 仓库
 * stock_location 库位
 * stock_picking 分拣单（出库、入库、内部移动）
 * stock_move 移动记录表，每次分拣就会触发一次移动
@@ -95,6 +96,7 @@
 * image_medium
 * image_small
 
+
 ##### sale继承
 * service_type 服务类型
 * sales_count 销售数量
@@ -103,6 +105,7 @@
 
 #### product.product 产品
 * 继承了product.template
+
 
 
 #### sale.order 销售订单
@@ -119,6 +122,7 @@
 * order_line 订单内容， 指向sale.order.line
 
 
+
 #### sale.order.line 销售订单项
 * 定义一张销售订单项，要销售的一件商品
 
@@ -127,6 +131,7 @@
 * name 名字
 
 * product_id 产品ID，指向product.product
+
 
 
 #### purchase.order 采购订单
@@ -146,9 +151,74 @@
 * product_id 产品ID，指向product.product
 
 
-#### stock.inventory 仓库库存
+#### stock.warehouse 仓库
+* name 仓库名
+* company_id 所属公司
+* partner_id 仓库地址
+* code 识别码
+
+* reception_steps 入库步骤
+* delivery_steps 出库步骤
+
+* wh_input_stock_loc_id  输入库位
+* wh_qc_stock_loc_id  质检库位
+* wh_output_stock_loc_id    输出库位
+* wh_pack_stock_loc_id    打包库位
+
+* pick_type_id  拣货类型
+* pack_type_id 打包类型
+* out_type_id  出库类型
+* in_type_id 入库类型
 
 
+#### stock.location 仓库库位
+* name 库位名字
+* complete_name 库位全名
+* barcode 二维码
+* usage 用途（供应商、内部、客户、转发、盘点）
+
+* location_id 父库位
+* child_ids 子库位
+
+* quant_ids  库存信息, 指向stock.quant
+
+
+#### stock.quant  库存信息
+* product_id  产品，指向product.product
+* product_tmpl_id 产品模板，指向product.template
+* product_uom_id 度量单位
+
+* lot_id 产品串号, 指向stock.production.lot
+* package_id  包装，指向stock.quant.package
+* owner_id    拥有者，指向res.partner
+
+* in_date 入架时间
+
+* quantity 总数量
+* inventory_quantity 盘点数量
+* reserved_quantity  保留数量
+* available_quantity 有效数量
+
+##### stock.quant.package 库存包装
+* name  名字
+* packaging_id  包装类型，指向product.packaging
+
+
+#### stock.picking 仓库分拣单
+* name 信息
+* note 注释
+* origin  源文档
+
+* move_type 发货策略（direct, one）
+* picking_type_id 分拣类型，指向stock.picking.type
+* group_id 补货组
+
+* partner_id 联系人，指向res.partner
+* user_id 负责人，指向res.users
+* owner_id  拥有人，指向res.partner
+
+* location_id 源库位，指向stock.location
+* location_dest_id 目标库位，指向stock.location
 
 
 ## 代发货
