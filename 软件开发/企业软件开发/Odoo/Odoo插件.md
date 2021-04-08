@@ -315,5 +315,19 @@ sale插件会继承该模板，增文档列表项
         * 通过product的_select_seller(),_prepare_sellers()确定
     1. 生成采购单 
         * 通过_prepare_purchase_order()生成数据
+        * 通过调用模型的create()生成订单
     1. 生成采购单行
-        * 通过PurchaseOrderLilne._prepare_purchase_order()生成数据
+        * 通过PurchaseOrderLilne._prepare_purchase_order_line()生成数据
+        * 通过调用模型的create()生成订单行
+
+
+
+### 接收单
+
+#### 创建接收单
+* 位置：purchase_stock:PurchaseOrder.button_approve()
+* 逻辑：
+    1. 调用父类的button_approve()
+    1. 调用_create_picking()创建接收单
+        1. 调用_prepare_picking()生成数据
+        1. 调用模型的create()生成单子
