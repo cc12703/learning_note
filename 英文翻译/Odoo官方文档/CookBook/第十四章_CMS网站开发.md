@@ -412,6 +412,7 @@
     ```
 
 
+
 ### 字段
 #### 总述
 * h3和div标签中使用了t-field属性
@@ -519,6 +520,9 @@
 * 没有理由不使用template的便利性，但是你需要知道实现原理
     * template元素在ir.ui.view模型中创建了一条qweb类型的记录
     * 依靠于template的name和inherit_id属性，视图记录中的inherit_id字段会被设置
+
+
+
 
 
 
@@ -652,3 +656,146 @@
     * 在website/views/snippets.xml中找到所有的选项
 * 片段选择也支持data-exclude、data-drop-near、data-drop-in属性
     * 这些属性决定了当片段被拖出片段栏时，可以被放置在什么地方
+
+
+
+
+
+## 从用户获取输入
+
+### 总述
+* 在网页开发中，经常需要创建表单来从用户那里获取输入
+* 本节中，我们会给页面创建一个HTML表单，来让用户上报相关书的问题
+
+
+### 准备
+1. 给library.book增加字段，新建book.issues模型
+    ```python
+    class LibraryBook(models.Model) :
+        book_issue_id = fields.One2many('book.issue', 'book_id')
+
+    class LibraryBookIssuses(models.Model) :
+        _name = 'book.issue'
+
+        book_id = fields.Many2one('library.book', required=True)
+        submitted_by = fields.Many2one('res.users')
+        issue_description = fields.Text()
+    ```
+1. 在书界面增加book_issues_id字段
+    ```xml
+    <group string="Book Issues">
+        <field name="book_issue_id" nolable="1">
+            <tree>
+                <field name="create_date"/>
+                <field name="submitted_by"/>
+                <field name="issue_description"/>
+            </tree>
+        </field>
+    </group>
+    ```
+1. 给book.issue模型增加访问权限
+
+
+
+### 如何操作
+1. 在main.py中增加新路由
+    ```python
+    @http.route('/books/submit_issues', type='http', auth='user', website=True)
+    def books_issues(self, **post) : 
+        if post.get('book_id') :
+            book_id = int(post.get('book_id))
+            issue_description = page.get('issue_description')
+            request.env['book.issue'].sudo().create({
+                'book_id': book_id,
+                'issue_description': issue_description,
+                'submitted_by': request.env.user.id
+            })
+            return request.redirect('/books/submit_issues?submitted=1')
+        return request.render('my_library.books_issue_form', {
+            'books': request.env['library.book'].search([]),
+            'submitted': post.get('submitted', False)
+        })
+    ```
+1. 增加一个带HTML表单的模板
+    ```xml
+    <template id="books_issue_form" name="Book Issues Form">
+        <t t-call="website.layout">
+            <div class="xxxx">
+                ....
+            </div>
+        </t>
+    </template>
+    ```
+1. 增加一个条件展示的头
+    ```xml
+    <t t-if="submitted">
+        <h3 class="xxx">
+            <i class="xxx"/>
+            Book Submitted Successfully
+        </h3>
+        <h1> Report the another book issue </h1>
+    </t>
+    <t t-else="">
+        <h1> Report the book issue </h1>
+    </t>
+    ```
+1. 增加表单
+    ```xml
+    <form method="post">
+        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+        <div class="form-group">
+            <label> Select Book</label>
+            <select name="book_id">
+                <t t-foreach="books" t-as="book">
+                    <option t-att-value="book.id">
+                        <t t-esc="book.name">
+                    </option>
+                </t>
+            </select>
+        </div>
+        <div class="form-group">
+            <label> Issue Description </label>
+            <textarea name="issue_description" />
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+    ```
+
+
+### 工作原理
+#### 步骤1
+* 创建了一个路由来提交书问题
+* 函数中**post参数接收URL中的所有查询参数，可以从中获取到已提交的表单数据
+* 例子中，我们使用相同的控制器来显示页面和提交问题
+    * 如果在post参数中发现了数据，就创建一个book.issue模型的新记录并使用submitted查询参数重定向到当前页面
+    * 这样用户就可以看见问题提交后的一个反馈信息并且如果愿意可以继续提交另一个问题
+
+##### 注意
+* 由于一个普通用户没有创建新问题记录的权限，所有我们需要使用sudo()来创建记录
+* 虽然用户是从网页上提交了一个问题，但是还是有必要创建一个问题记录的
+* 该例子也是sudo()的一个实际应用
+
+
+#### 步骤4
+* 我们给form增加了三个字段：csrf_token，要选择的书、问题描述
+* 最后两个字段是要从网页上获取的输入
+* csrf_token是用来避免CSRF攻击的
+
+
+##### 提示
+* 在某些情况下，如果你想禁止csrf校验，可以在路由上使用crsf=False
+    * 例子：@http.route('/url', type='http', auth='user', website=True, csrf=False)
+
+
+
+### 更多
+* 你可以将路由页面分开，对于提交的数据，可以在表单上增加action属性  
+    ```xml
+    <form action="/my_url" method="post">
+        ...
+    </form>
+    ```
+* 可以通过在路由上增加method参数来限制get请求
+    ```python
+    @http.route('/my_url', type='http', method='POST', auth='user', website=True)
+    ```

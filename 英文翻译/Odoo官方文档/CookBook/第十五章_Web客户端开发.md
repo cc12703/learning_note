@@ -312,7 +312,8 @@
 
 ### 更多
 #### AbstractField
-* 该类包含一些有意思的属性
+该类包含一些有意思的属性
+
 * this.model：引用了当前模型的名字（在例子中，就是library.book）
 * this.field：包含了模型field_get()的粗略输出，即控件要显示的字段
     * 该方法可以获取当前字段的所有信息
@@ -323,3 +324,308 @@
 
 
     
+
+
+## 创建视图
+
+### 总述
+* 本节将创建一个称为m2m_group的视图，用于按组来显示记录。将记录划分到不同的组中
+
+### 如何操作
+1. 增加一个新的视图类型
+    ```python
+    class View(models.Model) :
+        _inherit = 'ir.ui.view'
+        type = fields.Selection(selection_add=[('m2m_group', 'M2m Group')])
+    ```
+1. 增加一个新的视图模式
+    ```python
+    class ActWindowView(models.Model) :
+        _inherit = 'ir.actions.act_window.view'
+        view_mode = fields.Selection(selection_add=[('m2m_group', 'M2m Group')], 
+                                     ondelete=('m2m_group':'cascade'))
+    ```
+1. 给base模型增加新方法
+    ```python
+    class Base(models.AbstractModel) :
+        _inherit = 'base'
+
+        @api.model
+        def get_m2m_group_date(self, domain, m2m_field) :
+            records = self.search(domain)
+            result_dict = {}
+            for record in records :
+                for m2m_record in record[m2m_field] :
+                    if m2m_record.id not in result_dict :
+                        result_dict[m2m_record.id] = {
+                            'name': m2m_record.display_name,
+                            'children': [],
+                            'model': m2m_record._name
+                        }
+                    result_dict[m2m_record.id]['children'].append({
+                        'name': record.display_name,
+                        'id': record.id,
+                    })
+            return result_dict
+    ```
+1. 增加客户端模型文件 /static/src/js/m2m_group_model.js
+    ```js
+    odoo.define('m2m_group.Model', function(require) {
+        var AbstractModel = require('web.AbstractModel')
+        var M2mGroupModel = AbstractModel.extend({
+            _get: function() { 
+                return this.data;
+            },
+            __load: function (params) {
+                this.modelName = params.modelName;
+                this.domain = params.domain;
+                this.m2m_field = params.m2m_field;
+                return this._fetchData();
+            },
+            __reload: function(handle, params) {
+                if('domain' in params) {
+                    this.domain = params.domain;
+                }
+                return this._fetchData();
+            },
+            _fetchData: function() {
+                var self = this;
+                return this._rpc({
+                    model: this.modelName,
+                    method: 'get_m2m_group_data',
+                    kwargs: {
+                        domain: this.domain,
+                        m2m_field: this.m2m_field
+                    }
+                }).then(function (result) {
+                    self.data = result;
+                });
+            },
+        });
+        return M2mGroupModel;        
+    });
+    ```
+1. 增加客户端控制器文件 /static/src/js/m2m_group_controller.js
+    ```js
+    odoo.define('m2m_group.Controller', function(require) {
+        var AbstractController = require('web.AbstractController');
+        var core = require('web.core');
+        var qweb = core.qweb;
+        var M2mGroupController = AbstractController.extend({
+            custom_events: _.extend({}, AbstractController.prototype.custom_events, {
+                'btn_clicked': '_onBtnClicked',
+            }),
+            renderButtons: function ($node) {
+                if ($node) {
+                    this.$buttons = $(qweb.render('ViewM2mGroup.buttons'));
+                    this.$buttons.appendTo($node);
+                    this.$buttons.on('click', 'button', this._onAddButtonClick.bind(this));
+                }
+            },
+            _onBtnClicked: function (ev) {
+                this.do_action({
+                    type: 'ir.actions.act_window',
+                    name: this.title,
+                    res_model: this.modelName,
+                    views: [[false, 'list'], [false, 'form']],
+                    domain: ev.data.domain,
+                });
+            },
+            _onAddButtonClick: function (ev) {
+                this.do_action({
+                    type: 'ir.actions.act_window',
+                    name: this.title,
+                    res_model: this.modelName,
+                    views: [[false, 'form']],
+                    target: 'new'
+                });
+            },
+        });
+        return M2mGroupController;
+    });
+    ```
+1. 增加客户端渲染器文件/static/src/js/m2m_group_renderer.js
+    ```js
+    odoo.define('m2m_group.Renderer', function(require) {
+        var AbstractRenderer = require('web.AbstractRenderer')
+        var core = core.qweb;
+        var M2mGroupRenderer = AbstractRenderer.extend({
+            events: _.extend({},AbstractRenderer.prototype.custom_events, {
+                'click.o_primay_button': '_onClickButton',
+            }),
+            _render: function() {
+                var self = this;
+                this.$el.empty();
+                this.$el.append(qweb.render('ViewM2mGroup', {
+                    'groups': this.state,
+                }));
+                return this._super.apply(this, arguments);
+            },
+            _onClickButton: function(ev) {
+                ev.preventDefault();
+                var target = $(ev.currentTarget);
+                var group_id = target.data('group');
+                var children_ids = 
+                        _.map(this.state[group_id].children, function (group_id) {
+                            return group_id.id;
+                        });
+                this.trigger_up('btn_clicked', {
+                    'domain': [['id', 'in', children_ids]]
+                });
+            },
+        });
+        return M2mGroupRenderer;
+    });
+    ```
+1. 增加客户端视图文件/static/src/js/m2m_group_view.js
+    ```js
+    odoo.define('m2m_group.View', function (require) {
+        var AbstractView = require('web.AbstractView');
+        var view_registry = require('web.view_registry');
+
+        var M2mGroupController = require('m2m_group.Controller');
+        var M2mGroupModel = require('m2m_group.Model');
+        var M2mGroupRenderer = require('m2m_group.Renderer');
+
+        var M2mGroupView = AbstractView.extend({
+            display_name: 'Author',
+            icon: 'fa-id-card-o',
+            config: _.extend({}, AbstractView.prototype.config, {
+                Model: M2mGroupModel,
+                Controller: M2mGroupController,
+                Renderer: M2mGroupRenderer,
+            }),
+            viewType: 'm2m_group',
+            searchMenuTypes: ['filter', 'favorite'],
+            accesskey: "a",
+            init: function (viewInfo, params) {
+                this._super.apply(this, arguments);
+                var attrs = this.arch.attrs;
+                if (!attrs.m2m_field) {
+                    throw new Error('M2m view has not defined "m2m_field" attribute.');
+                }
+                // Model Parameters
+                this.loadParams.m2m_field = attrs.m2m_field;
+            },
+        });
+        view_registry.add('m2m_group', M2mGroupView);
+        return M2mGroupView;
+    });
+    ```
+1. 增加视图QWeb模板文件/static/src/xml/qweb_template.xml
+    ```xml
+    <t t-name="ViewM2mGroup">
+        ...
+    </t>
+    ```
+1. 将所有js文件加入后端资源中
+1. 给library.book模型增加新视图
+    ```xml
+    <record id="library_book_view_author" model="ir.ui.view">
+        <field name="name">Library Book Author</field>
+        <field name="model">library.book</field>
+        <field name="arch" type="xml">
+            <m2m_group m2m_field="author_ids" color_field="color"></m2m_group>
+        </field>
+    </record>
+    ```
+1. 给Book动作增加m2m_group类型
+    ```xml
+    <field name="view_mode">tree,m2m_group,form</field>
+    ```
+
+### 显示效果
+
+![](https://gitee.com/cc12703/figurebed/raw/master/img/20210414112956.png)
+
+
+
+
+### 工作原理
+#### 步骤3
+* 在base上增加方法可以保证该方法对于所有模型都有效
+* 该方法可以从js视图中通过RPC被调用到
+* 需要创建两个参数：domain和m2m_field
+    * domain参数的值，会是由搜索视图domain和动作domain的合并生成的
+    * m2m_field参数，用于指定使用哪个字段进行记录分组
+
+
+#### 视图结构
+* js视图由多个部分组成：视图View, 模型Model, 渲染器renderer, 控制器controller
+* 由于View在Odoo代码中已经有了别的含义，所有MVC(Model，View, Controller)变成了MRC(Model, Renderer, Controller)
+* 总体上说，视图由模块、渲染器、控制器按MVC层次组合在一起
+
+##### 图示
+![](https://gitee.com/cc12703/figurebed/raw/master/img/20210414114447.png)
+
+
+##### 模型
+* 模型的作用是来保存视图的状态
+* 发送RPC请求给服务器获取数据，并传递数据给控制器和渲染器
+* 当视图初始化完成后，会调用__load()来获取数据
+* 当搜索条件变化，视图需要新的状态时，__reload()会被调用
+* 当控制器需要获取模型的状态时，__get()会被调用
+
+##### 控制器
+* 控制器的作用协调模型和渲染器
+* 当渲染器发生动作时，渲染器会将信息传送给控制器并执行对应的动作，有时候还会调用模型的方法
+* 此外，控制器还管理着控制面板中的按键
+* 例子中，我们增加了一个按键用于添加新记录
+    * 需要覆写AbstractController的renderButtons()方法
+* 我们还注册了custom_events用来当作者卡中的按键被点击后，渲染器可以触发事件给控制器来指定动作
+
+##### 渲染器
+* 渲染器的作用管理视图的DOM元素，每个视图都使用不同的方式来渲染数据
+* 在渲染器中，可以通过state变量获取到模型状态，调用render()方法来渲染
+* 例子中，我们使用当前状态来渲染ViewM2mGroup的QWeb模板，来显示视图
+* 例子中，我们映射了js事件到自定义事件
+    * 我们给卡片中的按键绑定了点击事件，一旦用户点击该按键，渲染器就会触发btn_clicked事件给控制器
+
+###### 要点
+* 注意events和custom_events是不同的。
+    * events是标准的js事件
+    * custom_events来自于Odoo的js框架，该事件可以通过trigger_up方法触发
+
+
+##### 视图
+* 视图的作用是使用基本元素来构建js视图
+    * 基本元素：字段、上下文、视图架构、参数信息
+* 视图会初始化控制器、渲染器和模型，将它们按MVC层次连接起来
+* 视图会给模型、渲染器、控制器设置需要的参数
+    * loadParams 模型参数
+    * controllerParams 控制器参数
+    * renderParams 渲染器参数
+
+
+
+
+## 更多
+* 如果你不想引入一个新的视图类型，而是想对视图进行少量修改，你可以对视图使用js_class
+* 例子：如果你想让一个视图看起来向看板一样，可以参考一下代码
+    ```python
+    var CustomDashboardRenderer = kanbanRenderer.extend({
+        ...
+    });
+    var CustomDashboardModel = KanbanModel.extend({
+        ...
+    });
+    var CustomDashboardController = KanbanController.extend({
+        ...
+    });
+    var CustomDashboardView = KanbanView.extend({
+        config: _.extend({},KanbaView.prototype.cofig, {
+            Model: CustomDashboardModel,
+            Renderer: CustomDashboardRenderer,
+            Controller: CustomDashboardController,
+        })
+    });
+    var viewRegistry = require('web.view_registry');
+    viewRegistry.add('my_custom_view', CustomDashboardView);
+    ```
+    ```xml
+    <field name="arch" type="xml">
+        <kanban js_class="my_cutom_view">
+            ...
+        </kanban>
+    </field>
+    ```

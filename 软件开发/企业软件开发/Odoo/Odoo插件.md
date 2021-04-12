@@ -16,6 +16,9 @@
     * purchase_stock 采购相关
     * sale_stock 销售相关
 
+* account 开票
+* payment 支付
+
 ## base
 * 定义基础业务模型：res_xxx
 * 定义软件数据模型：ir_xxx
@@ -53,22 +56,48 @@
 * company_id 关联res.company，多对一
 * company_ids 关联res.company, 多对多
 
+#### res.currency 货币
+* name 货币，使用货币代码（ISO 4217）
+* symbol 货币符号
+* rate 当前汇率
+* rate_ids 汇率表，指向res.currency.rate, 一对多
+
+#### res.currency.rate 货币汇率
+用于设置不同日期的汇率值
+* name 日期
+* rate 汇率，本位币相对于其他货币的汇率
 
 
 ## 核心功能 -- 进销存
 
 ### 数据库表
+* product_category 产品分类
+* product_product 产品
+* product_template 产品信息
+* product_uom 计量单位
+
 * stock_warehouse 仓库
 * stock_location 库位
+* stock_location_route 路线
 * stock_picking 分拣单（出库、入库、内部移动）
 * stock_move 移动记录表，每次分拣就会触发一次移动
 * stock_quant 商品库存表，存放商品数量
 * stock_inventory 库存盘点
 * stock_inventory_line 库存盘点明细
 * stock_production_lot 序列号（产品批次）
-
+* stock_warehouse_orderpoint 再订货规则
 * procurement_rule 补货规则
 * procurement_order 补货单
+
+
+* account_account 会计科目
+* account_account_type 科目类型
+* account_tax 税
+* account_move 会计分录（会计凭证）
+* account_move_line 分录明细
+* account_journal 会计归类账
+
+
 
 
 
@@ -220,6 +249,60 @@
 * location_id 源库位，指向stock.location
 * location_dest_id 目标库位，指向stock.location
 
+
+### account_move 会计凭证
+* name 名字
+* date 日期
+
+* move_type 凭证类型
+    * entry  凭证
+    * out_invoice 客户结算单
+    * out_refund 客户退款
+    * out_receipt 销售收据
+    * in_invoice 供应商账单
+    * in_refund 供应商退款
+    * in_receipt 采购收据
+* company_currency_id 公司货币
+* currency_id 货币
+
+* journal_id 指向account_jounral，多对一
+* line_ids 凭证明细，指向account_move_line，一对多
+
+
+#### account_move_line 明细
+* name 标签
+* product_id 产品，指向product.product
+
+
+### account_journal  归类账
+用于分类显示会计分录
+* name 日志名字
+* code 代码
+* type 类型
+    * sale 销售
+    * purchase 采购
+    * cash 现金
+    * bank 银行
+
+
+### account_payment 会计支付
+* amount 金额
+* payment_type 类型
+    * outbound 付款
+    * inbound 收款
+* payment_reference 参考信息
+* partner_type 联系人类型
+    * customer 客户
+    * supplier 供应商
+
+* move_id 指向account_move，多对一
+* partner_id 联系人，指向res.partner，多对一
+* destination_account_id 目标科目，指向account.account，多对一
+
+
+### account_account 会计科目
+* name 科目名字
+* currency_id 科目货币
 
 ## 代发货
 ### 组件关系
