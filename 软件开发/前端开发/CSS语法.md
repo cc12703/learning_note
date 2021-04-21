@@ -43,24 +43,101 @@
 
 ### 选择器
 
-* id选择器，匹配特定ID的元素，使用 # 定义
-* class选择器，匹配一组元素，使用 . 定义
-* 通用选择器，匹配任何原始，使用 * 定义
-* 标签选择器，匹配特定标签的元素，使用 标签名 定义
+#### 类型
+* 简单选择器
+* 组合选择器（根据特定关系来选取元素）
+* 伪类选择器（根据特定状态选取元素）
+* 伪元素选择器
+* 属性选择器 （根据属性、属性值选取元素）
 
-#### 例子
-```css
-    #para1 { text-align:center; color:red; }
-    
-    .center {text-align:center;}
-    p.center {text-align:center;}
-```
 
-#### 组合
-* E,F 多元素选择器，需要同时匹配才会生效，使用 逗号 分隔
-* E F 后代元素选择器，匹配属于E元素后代的F元素，使用 空格 分隔
-* E>F 子元素选择器，匹配所有E元素的子元素F
+#### 简单选择器
+* 元素：根据元素名称来选
+    ```css
+    p {text-align:center;}
+    ```
+* id：根据元素的ID属性来选
+    ```css
+    #para1 {text-align:center;}
+    ```
+* 类：根据元素的class属性来选
+    ```css
+        .center {text-align:center;}
+    ```
+* 通用：选择所有的元素
+    ```css
+    * {text-align:center;}
+    ```
+* 分组：逗号分隔，选择所有元素
+    ```css
+    h1,h2,p {text-align:center;}
+    ```
 
+#### 组合选择器
+* 后代元素：E 空格 F, 匹配属于E元素内的所有F元素
+    ```css
+    div p { background-color: yellow; }
+    ```
+* 子元素：E > F, 匹配E元素的所有F子元素
+    ```css
+    div > p { background-color: yellow; }
+    ```
+* 相邻兄弟元素：E + F, 匹配紧随在E元素后面的所有F元素
+    ```css
+    div + p { background-color: yellow; }
+    ```
+* 通用兄弟元素：E ~ F, 匹配E元素的所有同级的F元素
+    ```css
+    div ~ p { background-color: yellow; }
+    ```
+
+#### 伪类选择器
+* 伪类：用于定义元素的特殊状态
+* 语法：
+    ```css
+    selector:pseudo-class {
+    property: value;
+    }
+    ```
+* :link 选择所有未被访问的元素
+    ```css
+    a:link { background-color:yellow; }
+    ```
+* :hover 选择鼠标悬停其上的元素
+
+#### 伪元素选择器
+* ::first-line 
+
+
+#### 属性选择器
+* [attr]  选择带有指定属性的元素
+    ```css
+    a[target] { background-color: yellow; }
+    ```
+* [attr="value"] 选择带有指定属性和值的元素
+    ```css
+    a[target="_blank"] { background-color: yellow; }
+    ```
+* [attr~="value"] 选择属性值包含指定词的元素
+    ```css
+    [title~="flower"] { border: 5px solid yellow; }
+    ```
+* [attr|="value"] 选择属性值以指定值开头的元素（值必须是完整的单词）
+    ```css
+    [class|="top"] { background: yellow; }
+    ```
+* [attr^="value"] 选择属性值以指定值开头的元素（值不必是完整的单词）
+    ```css
+    [class^="top"] { background: yellow; }
+    ```
+* [attr$="value"] 选择属性值以指定值结尾的元素（值不必是完整的单词）
+    ```css
+    [class$="test"] { background: yellow; }
+    ```
+* [attr*="value"] 选择属性值包含有指定值的元素（值不必是完整的单词）
+    ```css
+    [class*="te"] { background: yellow; }
+    ```
 
 ### 创建
 
