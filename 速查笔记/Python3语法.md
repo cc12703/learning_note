@@ -1,6 +1,8 @@
 
 # Python3语法
 
+[TOC]
+
 
 ## 基础
 
@@ -169,22 +171,19 @@ dict2 = {'name' : 'earth', 'port' : 80}
 
 ## 模块
 
+### 概述
 * 模块：一个扩展名为py的文件
 * 包：一个目录，包含__init__.py文件
 
 ### 导入语法
-
 #### 导入顺序
 1. 标准库模块
 2. 第三方模块
 3. 自定义模块
 
-
 #### import
 * 加载模块
 * 语法：import module
-
-
 
 #### from-import
 * 从模块中导入指定部分到当前的命名空间
@@ -198,77 +197,76 @@ dict2 = {'name' : 'earth', 'port' : 80}
 
 
 #### 导入包
-
 * 使用 点语法
+* 示例
+    ```python
+    import Phone.Mobile.Analog
 
-```python
-import Phone.Mobile.Analog
-
-from Phone import Mobile
-from Phone.Mobile import Analog
-```
+    from Phone import Mobile
+    from Phone.Mobile import Analog
+    ```
 
 #### 相对导入
 * import 只支持绝对导入
 * from-import 支持绝对导入，相对导入
 * 使用 点 进行标识
+* 示例
+    ```python
+    from .Analog import dial
+    from ..common_util import setup
+    from ..Fax import G3.dial
+    ```
 
-```python
-from .Analog import dial
-from ..common_util import setup
-from ..Fax import G3.dial
-```
+
 
 
 ## 编程范式
 
 ### 函数式
-
 #### lambda
 * 用于创建匿名函数 
 * 语法：lambda [arg1, arg2, xxx] : expression
+* 示例
+    ```python
+    lambda x, y: x + y
 
-```python
-lambda x, y: x + y
-
-a = lambda x, y=2: x + y
-a(3)
-a(3, 6)
-```
+    a = lambda x, y=2: x + y
+    a(3)
+    a(3, 6)
+    ```
 
 #### 内建函数
-
 ##### filter
 * 原型：filter (func, seq) 
 * 作用：使用func来过滤seq序列，并返回一个序列
-
-```python
-filter(lambda n: n%2, [xxx])
-```
+* 示例
+    ```python
+    filter(lambda n: n%2, [xxx])
+    ```
 
 ##### map
 * 原型：map (func, seq1, seq2, xxx) 
 * 函数定义：func(seq1[i], seq2[i], xxx ) 
 * 作用：将func作用于序列的每个元素，并返回一个序列 
 * 注意：map会延迟求解。若需要求值，则要加list()
-
-```python
-list(map (lambda x: x+2, [0,1,2,3])) -> [2,3,4,5]
-map(lambda x, y: x+y, [1,3,5], [2,4,5])
-```
+* 示例
+    ```python
+    list(map (lambda x: x+2, [0,1,2,3])) -> [2,3,4,5]
+    map(lambda x, y: x+y, [1,3,5], [2,4,5])
+    ```
 
 ##### reduce
 * 原型：reduce (func, seq, init) 
 * 函数定义：func( last, seq[i] ) 
 * 作用：使用func来合并序列，init为初始化值 
 * 注意：reduce位于 functools 包中
+* 示例
+    ```python
+    reduce(lambda x,y: x+y, [0,1,2,3,4], 0)  -> 10
+    ```
 
-```python
-reduce(lambda x,y: x+y, [0,1,2,3,4], 0)  -> 10
-```
 
 ### 面向对象
-
 #### 创建类
 ```python
 class Hello(object) :
@@ -295,6 +293,8 @@ class Hello(object) :
 * C.bases   类的所有父类（元组）
 * C.dict  类的属性
 * C.module  类所在的模块
+
+
 
 
 ## 异常处理
@@ -334,36 +334,36 @@ finally :
 ### with
 * 用于简化资源的分配和释放代码
 * 语法 with context_expr [as var] 
+* 示例
+    ```python
+    with open('/etc/passwd', 'r') as f:
+        for eachLine in f:
+            #...
+    ```
 
-```python
-with open('/etc/passwd', 'r') as f:
-    for eachLine in f:
-        #...
-```
+
 
 
 
 ## 类型
 
 ### 类型标注
-
 * 标注参数 使用 **:** 符号
 * 标注返回值 使用 **->** 符号
 * 标注数据结构 使用typing模块
+* 示例
+    ```python
+    from typing import List
 
-```python
-from typing import List
+    def plus(a: int, b: int = 2) -> int :
+        return a + b
 
-def plus(a: int, b: int = 2) -> int :
-    return a + b
-
-def func(name: str) -> List[str] :
-    pass
-```
+    def func(name: str) -> List[str] :
+        pass
+    ```
 
 
 ### 类别别名
-
 ```python
 from typing import List
 Vector = List[float]
