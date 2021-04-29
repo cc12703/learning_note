@@ -22,15 +22,14 @@ jobs:
         with:
             path: './source'
 
-      - run: pwd
-
       - name: Build Docset
         run: mddocsetbuilder ./source -o ./out -n learning_note -p tgz 
         working-directory: ${{ github.workspace }}
 
-      - name: Publish Package
-        uses: JasonEtco/upload-to-release@v0.1.1
+      - name: Update to release
+        uses: gacts/upload-to-release@v1.0.1
         with:
-          args: ./out/learning_note.docset.tgz
+          file: './out/learning_note.docset.tgz'
+          type: 'application/octet-stream'
         env:
           GITHUB_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
