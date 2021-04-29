@@ -27,9 +27,8 @@ jobs:
         working-directory: ${{ github.workspace }}
 
       - name: Update to release
-        uses: gacts/upload-to-release@v1.0.1
+        uses: xresloader/upload-to-github-release@v1
         with:
           file: './out/learning_note.docset.tgz'
-          type: 'application/octet-stream'
         env:
           GITHUB_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
