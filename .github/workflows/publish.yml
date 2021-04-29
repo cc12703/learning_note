@@ -30,5 +30,8 @@ jobs:
         uses: xresloader/upload-to-github-release@v1
         with:
           file: './out/learning_note.docset.tgz'
+          tags: false
+          draft: true
+          verbose: true
         env:
           GITHUB_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
