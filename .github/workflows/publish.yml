@@ -3,8 +3,8 @@
 name: Docset Build and Publish
 on: 
   push:
-    branches:
-      - main
+    tags:
+      - "*"
 
 
 jobs:
@@ -17,22 +17,35 @@ jobs:
             node-version: '12'
       - run: sudo npm_config_user=root npm install -g @cc12703m/mddocsetbuilder@1.5.1
 
+
       - name: Checkout
         uses: actions/checkout@v2
         with:
             path: './source'
+
 
       - name: Build Docset
         run: mddocsetbuilder ./source -o ./out -n learning_note -p tgz 
         working-directory: ${{ github.workspace }}
 
 
+      - name: Update to release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: Release Document
+          draft: false
+          prerelease: false
       - uses: xresloader/upload-to-github-release@v1
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           file: './out/learning_note.docset.tgz'
-          tags: false
-          draft: true
-          branches: 'main'
+          release_id: ${{ steps.create_release.outputs.id }}
+          overwrite: true
           verbose: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
