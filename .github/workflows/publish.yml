@@ -48,6 +48,8 @@ jobs:
           file: './out/learning_note.docset.tgz'
           release_id: ${{ steps.create_release.outputs.id }}
           overwrite: true
+          draft: false
+          prerelease: false
           verbose: true
       - run: echo $REL_URL
         env:
