@@ -40,7 +40,8 @@ jobs:
           body: Release Document
           draft: false
           prerelease: false
-      - uses: xresloader/upload-to-github-release@v1
+      - id: update_release
+        uses: xresloader/upload-to-github-release@v1
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -48,4 +49,7 @@ jobs:
           release_id: ${{ steps.create_release.outputs.id }}
           overwrite: true
           verbose: true
+      - run: echo $REL_URL
+        env:
+          REL_URL: ${{ steps.update_release.outputs.release_url}}
         
