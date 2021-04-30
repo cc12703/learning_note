@@ -41,17 +41,18 @@ jobs:
           draft: false
           prerelease: false
       - id: update_release
-        uses: xresloader/upload-to-github-release@v1
+        uses: actions/upload-release-asset@v1
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          file: './out/learning_note.docset.tgz'
-          release_id: ${{ steps.create_release.outputs.id }}
-          overwrite: true
-          draft: false
-          prerelease: false
-          verbose: true
-      - run: echo $REL_URL
-        env:
-          REL_URL: ${{ steps.update_release.outputs.release_url}}
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  
+          asset_path: ./out/learning_note.docset.tgz
+          asset_name: learning_note.docset.tgz
+          asset_content_type: application/tgz
+
+
+
+
+        
+      
         
