@@ -50,7 +50,21 @@ jobs:
           asset_name: learning_note.docset.tgz
           asset_content_type: application/tgz
 
-
+      - name: submit info
+        id: meta
+        uses: docker/metadata-action@v3
+        with: 
+          images: cc12703/learning_note
+          tags: type=ref,event=tag
+      - id: submit
+        uses: fjogeleit/http-request-action@v1.8.0
+        with:
+          url: 'http://notify.cc12703.com:3000/update/submit'
+          method: 'POST'
+          customHeaders: '{"Accept": "application/json"}'
+          data: '{"repoName" : "learning_note", "lastVer" : "${{steps.meta.outputs.version}}", "lastUrl" : "${{steps.update_release.outputs.browser_download_url}}"}'
+      - id: submit_resp
+        run: echo ${{ steps.submit.outputs.response }}
 
 
         
